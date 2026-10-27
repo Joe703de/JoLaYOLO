@@ -9,22 +9,22 @@ Tastenkürzel:
     ← / →           Vorheriges / Nächstes Bild
     Entf / d        Ausgewählte Box löschen
     q / Esc         Beenden
-    + / -           Zoomen
     r               Bild neu laden (ungepeicherte Änderungen gehen verloren)
+    c               Klassen bearbeiten
 
 Mausbefehle:
     Linker Klick + Ziehen     Box zeichnen
-    Rechter Klick auf Box     Box auswählen / löschen (siehe Taste d)
+    Rechter Klick auf Box     Box auswählen
+    Mausrad                   Zoomen (bezogen auf Mausposition)
+    Mittlere Maustaste + Ziehen  Bild verschieben (Pan)
 """
 
 import argparse
 import json
-import os
-import re
 import sys
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, simpledialog
+from tkinter import simpledialog
 
 from PIL import Image, ImageTk
 
@@ -35,7 +35,6 @@ class YoloLabeler:
         self.output_dir = Path(output_dir) if output_dir else self.image_dir
         self.config_file = Path(config_file) if config_file else self.image_dir / "jolayolo.json"
 
-        # Konfiguration laden oder Standard verwenden
         self.config = self.load_config()
         if classes:
             self.config["classes"] = classes
@@ -46,7 +45,6 @@ class YoloLabeler:
         self.class_colors = self.generate_colors(len(self.config["classes"]))
         self.current_class = 0
 
-        # Bilder sammeln
         self.image_files = sorted([
             p for p in self.image_dir.iterdir()
             if p.is_file() and p.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
@@ -61,14 +59,60 @@ class YoloLabeler:
         # GUI
         self.root = tk.Tk()
         self.root.title("JoLaYOLO")
-        self.root.geometry("1200x800")
+        self.root.geometry("1400x900")
         self.root.configure(bg="#222")
 
-        self.canvas = tk.Canvas(self.root, bg="#111", highlightthickness=0)
+        self.paned = tk.PanedWindow(self.root, orient=tk.HORIZONTAL, sashrelief=tk.RAISED, sashwidth=4)
+        self.paned.pack(fill=tk.BOTH, expand=True)
+
+        # Linke File-View
+        self.file_frame = tk.Frame(self.paned, bg="#222", width=260)
+        self.file_frame.pack_propagate(False)
+        self.paned.add(self.file_frame, minsize=200)
+
+        tk.Label(
+            self.file_frame,
+            text="Bilder",
+            bg="#222",
+            fg="#fff",
+            font=("Segoe UI", 12, "bold"),
+        ).pack(fill=tk.X, pady=(8, 4), padx=8)
+
+        self.search_var = tk.StringVar()
+        self.search_entry = tk.Entry(
+            self.file_frame,
+            textvariable=self.search_var,
+            bg="#333",
+            fg="#fff",
+            insertbackground="#fff",
+            font=("Segoe UI", 10),
+        )
+        self.search_entry.pack(fill=tk.X, padx=8, pady=4)
+        self.search_var.trace_add("write", lambda *args: self.refresh_file_list())
+
+        self.file_list = tk.Listbox(
+            self.file_frame,
+            bg="#222",
+            fg="#ccc",
+            selectbackground="#444",
+            selectforeground="#fff",
+            font=("Segoe UI", 10),
+            highlightthickness=0,
+            borderwidth=0,
+            activestyle="none",
+        )
+        self.file_list.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
+        self.file_list.bind("<<ListboxSelect>>", self.on_file_select)
+
+        # Hauptbereich
+        self.main_frame = tk.Frame(self.paned, bg="#111")
+        self.paned.add(self.main_frame, minsize=600)
+
+        self.canvas = tk.Canvas(self.main_frame, bg="#111", highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
         self.info_label = tk.Label(
-            self.root,
+            self.main_frame,
             text="",
             bg="#222",
             fg="#fff",
@@ -84,12 +128,18 @@ class YoloLabeler:
         self.scale = 1.0
         self.offset_x = 0
         self.offset_y = 0
-        self.boxes = []  # Liste von (class_id, x1, y1, x2, y2) in Bildkoordinaten
+        self.boxes = []
         self.selected_box = None
         self.start_x = None
         self.start_y = None
         self.temp_rect = None
+        self.panning = False
+        self.pan_start_x = 0
+        self.pan_start_y = 0
+        self.pan_offset_start_x = 0
+        self.pan_offset_start_y = 0
 
+        self.refresh_file_list()
         self.load_image(self.index)
         self.root.mainloop()
 
@@ -112,6 +162,38 @@ class YoloLabeler:
         except Exception as e:
             print(f"Konfiguration konnte nicht gespeichert werden: {e}")
 
+    # --- File-View ----------------------------------------------------------
+
+    def refresh_file_list(self):
+        self.file_list.delete(0, tk.END)
+        search = self.search_var.get().lower()
+        self.filtered_indices = []
+        for i, path in enumerate(self.image_files):
+            if search and search not in path.name.lower():
+                continue
+            self.filtered_indices.append(i)
+            label_text = self.file_list_label(path)
+            self.file_list.insert(tk.END, label_text)
+            if i == self.index:
+                self.file_list.selection_clear(0, tk.END)
+                self.file_list.selection_set(tk.END)
+                self.file_list.see(tk.END)
+
+    def file_list_label(self, path):
+        has_label = self.label_path(path).exists()
+        marker = "● " if has_label else "○ "
+        return marker + path.name
+
+    def on_file_select(self, event):
+        selection = self.file_list.curselection()
+        if not selection:
+            return
+        filtered_idx = selection[0]
+        if 0 <= filtered_idx < len(self.filtered_indices):
+            new_index = self.filtered_indices[filtered_idx]
+            if new_index != self.index:
+                self.load_image(new_index)
+
     # --- Bilder laden ------------------------------------------------------
 
     def load_image(self, index):
@@ -128,6 +210,7 @@ class YoloLabeler:
         self.fit_image()
         self.draw()
         self.update_info()
+        self.refresh_file_list()
 
     def fit_image(self):
         canvas_w = self.canvas.winfo_width()
@@ -187,11 +270,7 @@ class YoloLabeler:
             lines.append(f"{class_id} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}")
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        if lines:
-            label_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        else:
-            if label_file.exists():
-                label_file.write_text("", encoding="utf-8")
+        label_file.write_text("\n".join(lines) + "\n" if lines else "", encoding="utf-8")
 
     # --- Zeichnen ----------------------------------------------------------
 
@@ -206,10 +285,8 @@ class YoloLabeler:
         self.canvas.create_image(self.offset_x, self.offset_y, anchor=tk.NW, image=self.photo)
 
         for i, (class_id, x1, y1, x2, y2) in enumerate(self.boxes):
-            sx1 = x1 * self.scale + self.offset_x
-            sy1 = y1 * self.scale + self.offset_y
-            sx2 = x2 * self.scale + self.offset_x
-            sy2 = y2 * self.scale + self.offset_y
+            sx1, sy1 = self.to_canvas(x1, y1)
+            sx2, sy2 = self.to_canvas(x2, y2)
             color = self.class_colors[class_id % len(self.class_colors)]
             rect = self.canvas.create_rectangle(
                 sx1, sy1, sx2, sy2, outline=color, width=3, tags=f"box_{i}"
@@ -244,6 +321,10 @@ class YoloLabeler:
         self.canvas.bind("<B1-Motion>", self.on_mouse_move)
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
         self.canvas.bind("<Button-3>", self.on_right_click)
+        self.canvas.bind("<Button-2>", self.on_pan_start)
+        self.canvas.bind("<B2-Motion>", self.on_pan_move)
+        self.canvas.bind("<ButtonRelease-2>", self.on_pan_end)
+        self.canvas.bind("<MouseWheel>", self.on_mousewheel)
         self.canvas.bind("<Configure>", self.on_resize)
 
     def on_resize(self, event):
@@ -252,12 +333,11 @@ class YoloLabeler:
             self.draw()
 
     def on_mouse_down(self, event):
-        x = (event.x - self.offset_x) / self.scale
-        y = (event.y - self.offset_y) / self.scale
+        x = self.to_image_x(event.x)
+        y = self.to_image_y(event.y)
         self.start_x = x
         self.start_y = y
 
-        # Prüfen, ob auf eine bestehende Box geklickt wurde
         clicked = self.box_at(x, y)
         if clicked is not None:
             self.selected_box = clicked
@@ -268,19 +348,21 @@ class YoloLabeler:
             return
 
         self.temp_rect = self.canvas.create_rectangle(
-            event.x, event.y, event.x, event.y, outline=self.class_colors[self.current_class], width=2
+            event.x, event.y, event.x, event.y,
+            outline=self.class_colors[self.current_class], width=2
         )
 
     def on_mouse_move(self, event):
         if self.temp_rect and self.start_x is not None:
-            self.canvas.coords(self.temp_rect, self.to_canvas(self.start_x, self.start_y) + (event.x, event.y))
+            sx, sy = self.to_canvas(self.start_x, self.start_y)
+            self.canvas.coords(self.temp_rect, sx, sy, event.x, event.y)
 
     def on_mouse_up(self, event):
         if self.temp_rect is None or self.start_x is None:
             return
 
-        x = (event.x - self.offset_x) / self.scale
-        y = (event.y - self.offset_y) / self.scale
+        x = self.to_image_x(event.x)
+        y = self.to_image_y(event.y)
 
         x1, x2 = sorted([self.start_x, x])
         y1, y2 = sorted([self.start_y, y])
@@ -296,13 +378,43 @@ class YoloLabeler:
         self.update_info()
 
     def on_right_click(self, event):
-        x = (event.x - self.offset_x) / self.scale
-        y = (event.y - self.offset_y) / self.scale
+        x = self.to_image_x(event.x)
+        y = self.to_image_y(event.y)
         clicked = self.box_at(x, y)
         if clicked is not None:
             self.selected_box = clicked
             self.draw()
             self.update_info()
+
+    def on_pan_start(self, event):
+        self.panning = True
+        self.pan_start_x = event.x
+        self.pan_start_y = event.y
+        self.pan_offset_start_x = self.offset_x
+        self.pan_offset_start_y = self.offset_y
+
+    def on_pan_move(self, event):
+        if self.panning:
+            self.offset_x = self.pan_offset_start_x + (event.x - self.pan_start_x)
+            self.offset_y = self.pan_offset_start_y + (event.y - self.pan_start_y)
+            self.draw()
+
+    def on_pan_end(self, event):
+        self.panning = False
+
+    def on_mousewheel(self, event):
+        factor = 1.1 if event.delta > 0 else 0.9
+        mx = self.to_image_x(event.x)
+        my = self.to_image_y(event.y)
+
+        self.scale *= factor
+        self.scale = max(0.1, min(self.scale, 10.0))
+
+        # Mausposition bleibt an gleicher Bildstelle
+        self.offset_x = event.x - mx * self.scale
+        self.offset_y = event.y - my * self.scale
+
+        self.draw()
 
     def box_at(self, x, y):
         for i in range(len(self.boxes) - 1, -1, -1):
@@ -313,6 +425,12 @@ class YoloLabeler:
 
     def to_canvas(self, x, y):
         return x * self.scale + self.offset_x, y * self.scale + self.offset_y
+
+    def to_image_x(self, cx):
+        return (cx - self.offset_x) / self.scale
+
+    def to_image_y(self, cy):
+        return (cy - self.offset_y) / self.scale
 
     # --- Tastatur ----------------------------------------------------------
 
@@ -338,14 +456,6 @@ class YoloLabeler:
 
         elif key == "r":
             self.load_image(self.index)
-
-        elif key == "plus" or key == "KP_Add":
-            self.scale *= 1.2
-            self.draw()
-
-        elif key == "minus" or key == "KP_Subtract":
-            self.scale /= 1.2
-            self.draw()
 
         elif key.isdigit():
             num = int(key)
