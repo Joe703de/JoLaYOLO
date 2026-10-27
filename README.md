@@ -1,21 +1,75 @@
-# Joachim Labelt YOLO
+# Joachim Labelt YOLO (JoLaYOLO)
 
-1. Ordner Ansicht / Bild laden und anzeigen
-- Einfache GUI, z. B. mit Python / tkinter
-- Zoom, Pan
-2. Bounding Boxen zeichnen
-- Klick + Drag
-- Boxen verschieben/vergrößern
-- Boxen löschen
-3. Klassen automatisch zuweisen
-- Auswahl über Dropdown Menü (default für nächste Bounding Box bzw für aufgewählte Bounding Box)
-- Space / Backspace
-4. Export ins richtige Format
-- YOLO: <class_id> <x_center> <y_center> <width> <height>
-- COCO: JSON mit images, annotations, categories
-5. zusätzlich
-- für nächstes/voriges Bild
-- Auto-Save bei Wechsel
-- Last-Image-Resume
-- Bilder in Ordner laden
-- Negative-Beispiele markieren (leere Label-Datei)
+Ein einfaches, lokal lauffähiges Tool zum Labeln von Bildern im **YOLO-Format**.
+
+## Features
+
+- Bilder aus einem Ordner laden und anzeigen
+- Bounding Boxen per Maus zeichnen
+- Klassen per Tastenkürzel oder Bearbeiten-Dialog wählen
+- Navigation zwischen Bildern mit automatischem Speichern
+- Letzte Position merken (Resume)
+- Negative-Beispiele durch leere Label-Dateien
+- Export im YOLO-Textformat: `<class_id> <x_center> <y_center> <width> <height>`
+- (Geplant: optionaler COCO-JSON-Export)
+
+## Installation
+
+```bash
+python3 -m venv venv
+source venv/bin/activate   # Linux/Mac
+# venv\Scripts\activate    # Windows
+
+pip install -r requirements.txt
+```
+
+## Start
+
+```bash
+python jolayolo.py -i /pfad/zu/bildern
+```
+
+Mit eigenen Klassen:
+
+```bash
+python jolayolo.py -i /pfad/zu/bildern -c egg,kein_ei
+```
+
+Labels werden standardmäßig im gleichen Ordner wie die Bilder abgelegt. Ein eigener Ausgabeordner ist möglich:
+
+```bash
+python jolayolo.py -i /pfad/zu/bildern -o /pfad/zu/labels
+```
+
+## Tastenkürzel
+
+| Taste | Aktion |
+|-------|--------|
+| `1` – `9` | Klasse auswählen |
+| `Leertaste` / `→` | Nächstes Bild (automatisch speichern) |
+| `←` | Vorheriges Bild |
+| `Entf` / `d` | Ausgewählte Box löschen |
+| `+` / `-` | Zoomen |
+| `r` | Aktuelles Bild neu laden |
+| `c` | Klassen bearbeiten |
+| `q` / `Esc` | Beenden und speichern |
+
+## Mausbedienung
+
+| Aktion | Bedeutung |
+|--------|-----------|
+| Linker Klick + Ziehen | Neue Box zeichnen |
+| Linker Klick auf Box | Box auswählen |
+| Rechter Klick auf Box | Box auswählen |
+
+## Dateien
+
+- `jolayolo.py` — Hauptanwendung
+- `requirements.txt` — Python-Abhängigkeiten
+- `jolayolo.json` — Wird im Bilderordner angelegt und speichert Klassen sowie letzte Position
+
+## Geplante Erweiterungen
+
+- COCO-JSON-Export
+- Boxen verschieben und in der Größe ändern
+- Pan beim Zoomen
