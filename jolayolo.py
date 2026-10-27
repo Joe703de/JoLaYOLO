@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #!/usr/bin/env python3
 """
 JoLaYOLO — ein einfaches Tool zum Labeln von Bildern im YOLO-Format.
