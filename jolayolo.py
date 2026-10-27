@@ -17,6 +17,9 @@ Mausbefehle:
     Rechter Klick auf Box     Box auswählen
     Mausrad                   Zoomen (bezogen auf Mausposition)
     Mittlere Maustaste + Ziehen  Bild verschieben (Pan)
+    Ausgewählte Box:
+        - Innerhalb ziehen:     Box verschieben
+        - Anfasser ziehen:      Größe ändern
 """
 
 import argparse
@@ -30,6 +33,8 @@ from PIL import Image, ImageTk
 
 
 class YoloLabeler:
+    HANDLE_SIZE = 8
+
     def __init__(self, image_dir, output_dir=None, classes=None, config_file=None):
         self.image_dir = Path(image_dir)
         self.output_dir = Path(output_dir) if output_dir else self.image_dir
@@ -139,6 +144,11 @@ class YoloLabeler:
         self.pan_offset_start_x = 0
         self.pan_offset_start_y = 0
 
+        # Edit-Modus
+        self.edit_mode = None  # 'move' oder 'resize_<handle>'
+        self.edit_start_box = None  # (class_id, x1, y1, x2, y2)
+        self.edit_handle = None  # 'nw','n','ne','e','se','s','sw','w'
+
         self.refresh_file_list()
         self.load_image(self.index)
         self.root.mainloop()
@@ -206,6 +216,7 @@ class YoloLabeler:
         self.original = Image.open(path).convert("RGB")
         self.boxes = self.read_labels(path)
         self.selected_box = None
+        self.edit_mode = None
 
         self.fit_image()
         self.draw()
@@ -229,8 +240,7 @@ class YoloLabeler:
     # --- Label lesen / schreiben --------------------------------------------
 
     def label_path(self, image_path):
-        stem = image_path.stem
-        return self.output_dir / f"{stem}.txt"
+        return self.output_dir / f"{image_path.stem}.txt"
 
     def read_labels(self, image_path):
         label_file = self.label_path(image_path)
@@ -299,9 +309,30 @@ class YoloLabeler:
             if self.selected_box == i:
                 self.canvas.itemconfig(rect, outline="#fff")
                 self.canvas.create_rectangle(
-                    sx1 - 2, sy1 - 2, sx2 + 2, sy2 + 2, outline="#fff", width=1,
-                    dash=(4, 2),
+                    sx1 - 2, sy1 - 2, sx2 + 2, sy2 + 2, outline="#fff", width=1, dash=(4, 2)
                 )
+                self.draw_handles(sx1, sy1, sx2, sy2, color)
+
+    def draw_handles(self, sx1, sy1, sx2, sy2, color):
+        cx = (sx1 + sx2) / 2
+        cy = (sy1 + sy2) / 2
+        positions = {
+            "nw": (sx1, sy1),
+            "n": (cx, sy1),
+            "ne": (sx2, sy1),
+            "e": (sx2, cy),
+            "se": (sx2, sy2),
+            "s": (cx, sy2),
+            "sw": (sx1, sy2),
+            "w": (sx1, cy),
+        }
+        hs = self.HANDLE_SIZE / 2
+        for name, (px, py) in positions.items():
+            self.canvas.create_rectangle(
+                px - hs, py - hs, px + hs, py + hs,
+                fill=color, outline="#fff", width=1,
+                tags=f"handle_{name}",
+            )
 
     def update_info(self):
         img_name = self.image_files[self.index].name
@@ -335,29 +366,80 @@ class YoloLabeler:
     def on_mouse_down(self, event):
         x = self.to_image_x(event.x)
         y = self.to_image_y(event.y)
-        self.start_x = x
-        self.start_y = y
+
+        handle = self.handle_at(x, y)
+        if handle and self.selected_box is not None:
+            self.edit_mode = f"resize_{handle}"
+            self.edit_start_box = self.boxes[self.selected_box]
+            self.start_x = x
+            self.start_y = y
+            return
 
         clicked = self.box_at(x, y)
         if clicked is not None:
             self.selected_box = clicked
+            self.edit_mode = "move"
+            self.edit_start_box = self.boxes[self.selected_box]
+            self.start_x = x
+            self.start_y = y
             self.draw()
             self.update_info()
-            self.start_x = None
-            self.start_y = None
             return
 
+        self.start_x = x
+        self.start_y = y
         self.temp_rect = self.canvas.create_rectangle(
             event.x, event.y, event.x, event.y,
             outline=self.class_colors[self.current_class], width=2
         )
 
     def on_mouse_move(self, event):
+        x = self.to_image_x(event.x)
+        y = self.to_image_y(event.y)
+
+        if self.edit_mode == "move" and self.selected_box is not None:
+            dx = x - self.start_x
+            dy = y - self.start_y
+            class_id, x1, y1, x2, y2 = self.edit_start_box
+            self.boxes[self.selected_box] = (class_id, x1 + dx, y1 + dy, x2 + dx, y2 + dy)
+            self.draw()
+            return
+
+        if self.edit_mode and self.edit_mode.startswith("resize_") and self.selected_box is not None:
+            handle = self.edit_mode.split("_", 1)[1]
+            class_id, x1, y1, x2, y2 = self.edit_start_box
+            dx = x - self.start_x
+            dy = y - self.start_y
+
+            if "w" in handle:
+                x1 += dx
+            if "e" in handle:
+                x2 += dx
+            if "n" in handle:
+                y1 += dy
+            if "s" in handle:
+                y2 += dy
+
+            x1, x2 = sorted([x1, x2])
+            y1, y2 = sorted([y1, y2])
+            self.boxes[self.selected_box] = (class_id, x1, y1, x2, y2)
+            self.draw()
+            return
+
         if self.temp_rect and self.start_x is not None:
             sx, sy = self.to_canvas(self.start_x, self.start_y)
             self.canvas.coords(self.temp_rect, sx, sy, event.x, event.y)
 
     def on_mouse_up(self, event):
+        if self.edit_mode:
+            self.edit_mode = None
+            self.edit_start_box = None
+            self.start_x = None
+            self.start_y = None
+            self.draw()
+            self.update_info()
+            return
+
         if self.temp_rect is None or self.start_x is None:
             return
 
@@ -369,6 +451,7 @@ class YoloLabeler:
 
         if abs(x2 - x1) > 5 and abs(y2 - y1) > 5:
             self.boxes.append((self.current_class, x1, y1, x2, y2))
+            self.selected_box = len(self.boxes) - 1
 
         self.canvas.delete(self.temp_rect)
         self.temp_rect = None
@@ -380,9 +463,16 @@ class YoloLabeler:
     def on_right_click(self, event):
         x = self.to_image_x(event.x)
         y = self.to_image_y(event.y)
+        handle = self.handle_at(x, y)
+        if handle:
+            return
         clicked = self.box_at(x, y)
         if clicked is not None:
             self.selected_box = clicked
+            self.draw()
+            self.update_info()
+        else:
+            self.selected_box = None
             self.draw()
             self.update_info()
 
@@ -410,11 +500,36 @@ class YoloLabeler:
         self.scale *= factor
         self.scale = max(0.1, min(self.scale, 10.0))
 
-        # Mausposition bleibt an gleicher Bildstelle
         self.offset_x = event.x - mx * self.scale
         self.offset_y = event.y - my * self.scale
 
         self.draw()
+
+    def handle_at(self, x, y):
+        if self.selected_box is None:
+            return None
+        class_id, x1, y1, x2, y2 = self.boxes[self.selected_box]
+        sx1, sy1 = self.to_canvas(x1, y1)
+        sx2, sy2 = self.to_canvas(x2, y2)
+        cx = (sx1 + sx2) / 2
+        cy = (sy1 + sy2) / 2
+        positions = {
+            "nw": (sx1, sy1),
+            "n": (cx, sy1),
+            "ne": (sx2, sy1),
+            "e": (sx2, cy),
+            "se": (sx2, sy2),
+            "s": (cx, sy2),
+            "sw": (sx1, sy2),
+            "w": (sx1, cy),
+        }
+        hs = self.HANDLE_SIZE / 2 / self.scale  # Bildkoordinaten
+        for name, (px, py) in positions.items():
+            ix = self.to_image_x(px)
+            iy = self.to_image_y(py)
+            if abs(x - ix) <= hs and abs(y - iy) <= hs:
+                return name
+        return None
 
     def box_at(self, x, y):
         for i in range(len(self.boxes) - 1, -1, -1):
