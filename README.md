@@ -10,8 +10,11 @@ Ein einfaches, lokal lauffähiges Tool zum Labeln von Bildern im **YOLO-Format**
 - Navigation zwischen Bildern mit automatischem Speichern
 - Letzte Position merken (Resume)
 - Negative-Beispiele durch leere Label-Dateien
+- Linke Datei-Liste mit Suchfeld und Markierung gelabelter Bilder
+- Smoothes Zoomen mit dem Mausrad (bezogen auf Mausposition)
+- Panning mit mittlerer Maustaste
+- Boxen verschieben und in der Größe ändern
 - Export im YOLO-Textformat: `<class_id> <x_center> <y_center> <width> <height>`
-- (Geplant: optionaler COCO-JSON-Export)
 
 ## Installation
 
@@ -48,8 +51,7 @@ python jolayolo.py -i /pfad/zu/bildern -o /pfad/zu/labels
 | `1` – `9` | Klasse auswählen |
 | `Leertaste` / `→` | Nächstes Bild (automatisch speichern) |
 | `←` | Vorheriges Bild |
-| `Entf` / `d` | Ausgewählte Box löschen |
-| `+` / `-` | Zoomen |
+| `Entf` | Ausgewählte Box löschen |
 | `r` | Aktuelles Bild neu laden |
 | `c` | Klassen bearbeiten |
 | `q` / `Esc` | Beenden und speichern |
@@ -58,18 +60,15 @@ python jolayolo.py -i /pfad/zu/bildern -o /pfad/zu/labels
 
 | Aktion | Bedeutung |
 |--------|-----------|
-| Linker Klick + Ziehen | Neue Box zeichnen |
-| Linker Klick auf Box | Box auswählen |
+| Linker Klick + Ziehen auf freiem Bereich | Neue Box zeichnen |
+| Linker Klick auf Box | Box auswählen / verschieben |
 | Rechter Klick auf Box | Box auswählen |
+| Mausrad | Zoomen zur Mausposition |
+| Mittlere Maustaste + Ziehen | Bild verschieben (Pan) |
+| Anfasser an ausgewählter Box ziehen | Größe ändern |
 
 ## Dateien
 
 - `jolayolo.py` — Hauptanwendung
 - `requirements.txt` — Python-Abhängigkeiten
 - `jolayolo.json` — Wird im Bilderordner angelegt und speichert Klassen sowie letzte Position
-
-## Geplante Erweiterungen
-
-- COCO-JSON-Export
-- Boxen verschieben und in der Größe ändern
-- Pan beim Zoomen
