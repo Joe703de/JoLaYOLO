@@ -1,5 +1,4 @@
-# JoLaYOLO
-Joachim Labelt YOLO
+# Joachim Labelt YOLO
 
 1. Ordner Ansicht / Bild laden und anzeigen
 - Einfache GUI, z. B. mit Python / tkinter
