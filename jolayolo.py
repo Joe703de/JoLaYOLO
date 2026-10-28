@@ -29,12 +29,11 @@ Mausbefehle:
 
 import argparse
 import json
-import os
-import random
-import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+from dataset_workflow import prepare_split, training_command
 
 try:
     from PyQt6 import QtCore, QtGui, QtWidgets
@@ -277,11 +276,12 @@ class GraphicsView(QtWidgets.QGraphicsView):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, dataset_dir, classes=None, config_file=None):
         super().__init__()
-        self.dataset_dir = Path(dataset_dir).resolve()
+        self.dataset_dir = Path(dataset_dir).expanduser().resolve()
         self.images_dir = self.dataset_dir / "images" / "all"
         self.labels_dir = self.dataset_dir / "labels"
-        self.config_file = Path(config_file) if config_file else self.dataset_dir / "jolayolo.json"
+        self.config_file = Path(config_file).expanduser().resolve() if config_file else self.dataset_dir / "jolayolo.json"
 
+        self._ensure_dirs()
         self.config = self.load_config()
         if classes:
             self.config["classes"] = classes
@@ -311,8 +311,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rect_items = []
 
         self._verified_override = False
+        self._reading_labels = False
 
-        self._ensure_dirs()
         self.init_ui()
         if self.image_files:
             self.load_image(self.index)
@@ -373,6 +373,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def save_config(self):
         try:
+            self.config_file.parent.mkdir(parents=True, exist_ok=True)
             self.config_file.write_text(
                 json.dumps(self.config, indent=2, ensure_ascii=False),
                 encoding="utf-8",
@@ -587,7 +588,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scene.addItem(self.pixmap_item)
         self.scene.setSceneRect(self.pixmap_item.boundingRect())
 
-        self.read_labels(path)
+        self._reading_labels = True
+        try:
+            self.read_labels(path)
+        finally:
+            self._reading_labels = False
         self.view.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
         self.refresh_file_list()
         self.update_info()
@@ -624,6 +629,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if not hasattr(self, "current_image_path") or self.pixmap is None:
             return
 
+        current = self.current_status()
+        if current == STATUS_UNLABELED and not self.rect_items and not self._verified_override:
+            return
         # Alte Label-Dateien für dieses Bild löschen
         for status in [STATUS_MANUAL, STATUS_PSEUDO, STATUS_VERIFIED]:
             lp = self.label_path_for_status(self.current_image_path, status)
@@ -645,10 +653,9 @@ class MainWindow(QtWidgets.QMainWindow):
             lines.append(line)
 
         target_status = STATUS_MANUAL
-        current = self.current_status()
         if current == STATUS_PSEUDO and not getattr(self, "_verified_override", False):
             target_status = STATUS_PSEUDO
-        if self._verified_override:
+        if self._verified_override or current == STATUS_VERIFIED:
             target_status = STATUS_VERIFIED
             self._verified_override = False
 
@@ -669,7 +676,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rect_items.append(rect)
         self.select_box(rect)
         # Bei manueller Änderung am Pseudo-Bild: automatisch verified setzen
-        if self.current_status() == STATUS_PSEUDO:
+        if not self._reading_labels and self.current_status() == STATUS_PSEUDO:
             self._verified_override = True
         return rect
 
@@ -850,7 +857,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         model_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "YOLO-Modell wählen", "", "PyTorch Modelle (*.pt)"
+            self, "YOLO-Modell wählen", str(self.dataset_dir / "runs" / "detect"), "PyTorch Modelle (*.pt)"
         )
         if not model_path:
             return
@@ -910,62 +917,15 @@ class MainWindow(QtWidgets.QMainWindow):
             f"Pseudo-Labels für {len(unlabeled_images)} Bilder erzeugt.")
 
     def _prepare_train_val(self, val_ratio=0.2, seed=None):
-        if seed is None:
-            seed = random.randint(0, 100000)
-        random.seed(seed)
-
-        train_dir = self.labels_dir / "train"
-        val_dir = self.labels_dir / "val"
-
-        for d in [train_dir, val_dir]:
-            if d.exists():
-                shutil.rmtree(d)
-            d.mkdir(parents=True, exist_ok=True)
-
-        usable_images = []
-        for path in self.image_files:
+        def label_for_image(path):
             status = self.image_status(path)
-            if status in (STATUS_MANUAL, STATUS_VERIFIED):
-                usable_images.append(path)
-
-        if not usable_images:
-            return None, None, "Keine gelabelten Bilder vorhanden."
-
-        random.shuffle(usable_images)
-        split_idx = max(1, int(len(usable_images) * (1 - val_ratio)))
-        train_images = usable_images[:split_idx]
-        val_images = usable_images[split_idx:] or [usable_images[0]]
-
-        train_lines = []
-        val_lines = []
-
-        for img_path in train_images:
-            src = self.label_path_for_status(img_path, self.image_status(img_path))
-            dst = train_dir / f"{img_path.stem}.txt"
-            shutil.copy2(src, dst)
-            train_lines.append(str(img_path.relative_to(self.dataset_dir)))
-
-        for img_path in val_images:
-            src = self.label_path_for_status(img_path, self.image_status(img_path))
-            dst = val_dir / f"{img_path.stem}.txt"
-            shutil.copy2(src, dst)
-            val_lines.append(str(img_path.relative_to(self.dataset_dir)))
-
-        (self.dataset_dir / "train.txt").write_text("\n".join(train_lines) + "\n", encoding="utf-8")
-        (self.dataset_dir / "val.txt").write_text("\n".join(val_lines) + "\n", encoding="utf-8")
-
-        nc = len(self.config["classes"])
-        names = self.config["classes"]
-        data_yaml = (
-            f"path: .\n"
-            f"train: train.txt\n"
-            f"val: val.txt\n"
-            f"nc: {nc}\n"
-            f"names: {names}\n"
-        )
-        (self.dataset_dir / "data.yaml").write_text(data_yaml, encoding="utf-8")
-
-        return train_images, val_images, None
+            return self.label_path_for_status(path, status) if status in (STATUS_MANUAL, STATUS_VERIFIED) else None
+        try:
+            train, val = prepare_split(self.dataset_dir, self.image_files, label_for_image,
+                                       self.config["classes"], val_ratio, seed)
+            return train, val, None
+        except (OSError, ValueError) as exc:
+            return None, None, str(exc)
 
     def run_training(self):
         self.save_labels()
@@ -973,8 +933,6 @@ class MainWindow(QtWidgets.QMainWindow):
         if error:
             QtWidgets.QMessageBox.warning(self, "Fehler", error)
             return
-
-        base_model = "yolov8n.pt"
 
         epochs, ok = QtWidgets.QInputDialog.getInt(self, "Epochs", "Anzahl Epochen:", value=100, min=1, max=1000)
         if not ok:
@@ -986,14 +944,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not ok:
             return
 
-        cmd = [
-            "yolo", "detect", "train",
-            f"data={self.dataset_dir / 'data.yaml'}",
-            f"model={base_model}",
-            f"epochs={epochs}",
-            f"imgsz={imgsz}",
-            f"batch={batch}",
-        ]
+        cmd = training_command(self.dataset_dir, epochs, imgsz, batch)
 
         reply = QtWidgets.QMessageBox.question(
             self, "Training starten",
@@ -1005,22 +956,12 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         try:
+            options = {"cwd": str(self.dataset_dir)}
             if sys.platform == "win32":
-                # Neues CMD-Fenster im Dataset-Ordner öffnen, Training darin laufen lassen
-                dataset_dir_str = str(self.dataset_dir)
-                subprocess.Popen(
-                    ["cmd", "/k", "yolo", "detect", "train",
-                     "data=data.yaml",
-                     f"model={base_model}",
-                     f"epochs={epochs}",
-                     f"imgsz={imgsz}",
-                     f"batch={batch}"],
-                    cwd=dataset_dir_str,
-                )
-            else:
-                subprocess.Popen(cmd, cwd=str(self.dataset_dir))
+                options["creationflags"] = subprocess.CREATE_NEW_CONSOLE
+            subprocess.Popen(cmd, **options)
             QtWidgets.QMessageBox.information(self, "Gestartet",
-                "Training wurde in einem neuen Terminal-Fenster gestartet.\n"
+                "Training gestartet (Windows: neues Konsolenfenster; Linux/macOS: aktuelles Terminal).\n"
                 f"Ergebnis liegt später unter {self.dataset_dir / 'runs' / 'detect'}.")
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Fehler", f"Training konnte nicht gestartet werden:\n{e}")
