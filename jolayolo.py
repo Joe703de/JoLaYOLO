@@ -1005,9 +1005,16 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         try:
-            subprocess.Popen(cmd, cwd=str(self.dataset_dir))
+            if sys.platform == "win32":
+                # Neues CMD-Fenster öffnen, Training darin laufen lassen
+                subprocess.Popen(
+                    ["cmd", "/k", "cd", str(self.dataset_dir), "&&"] + cmd,
+                    shell=False,
+                )
+            else:
+                subprocess.Popen(cmd, cwd=str(self.dataset_dir))
             QtWidgets.QMessageBox.information(self, "Gestartet",
-                "Training wurde in einem separaten Prozess gestartet.\n"
+                "Training wurde in einem neuen Terminal-Fenster gestartet.\n"
                 f"Ergebnis liegt später unter {self.dataset_dir / 'runs' / 'detect'}.")
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Fehler", f"Training konnte nicht gestartet werden:\n{e}")
