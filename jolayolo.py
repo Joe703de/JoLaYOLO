@@ -481,15 +481,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.next_pseudo_btn.clicked.connect(self.goto_next_pseudo)
         left_layout.addWidget(self.next_pseudo_btn)
 
-        self.export_btn = QtWidgets.QPushButton("4. TFLite exportieren")
-        self.export_btn.setStyleSheet("background-color: #90EE90; color: black; font-weight: bold; padding: 8px;")
-        self.export_btn.clicked.connect(self.run_export)
-        left_layout.addWidget(self.export_btn)
-
         self.verify_btn = QtWidgets.QPushButton("Aktuelles Bild verifizieren (v)")
         self.verify_btn.setStyleSheet("background-color: #666; color: white; padding: 6px;")
         self.verify_btn.clicked.connect(self.verify_current_image)
         left_layout.addWidget(self.verify_btn)
+
+        self.export_btn = QtWidgets.QPushButton("4. TFLite exportieren")
+        self.export_btn.setStyleSheet("background-color: #90EE90; color: black; font-weight: bold; padding: 8px;")
+        self.export_btn.clicked.connect(self.run_export)
+        left_layout.addWidget(self.export_btn)
 
         left_layout.addSpacing(10)
 
