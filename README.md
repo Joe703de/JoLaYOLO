@@ -7,7 +7,7 @@ Ein lokales Label- und Trainings-Tool für **YOLOv8**, gebaut mit **PyQt6**.
 JoLaYOLO organisiert ein Dataset nach dem YOLO-Standard:
 
 ```
-egg_dataset/
+my_dataset/
 ├── images/
 │   ├── all/                    # Originalbilder (bleiben unverändert)
 │   ├── train/                  # vor Training generiert
@@ -64,8 +64,8 @@ Windows (PowerShell):
 ```powershell
 py -m venv venv
 .\venv\Scripts\python.exe -m pip install -r requirements.txt
-New-Item -ItemType Directory -Force ".\egg_dataset\images\all"
-.\venv\Scripts\python.exe jolayolo.py -d ".\egg_dataset"
+New-Item -ItemType Directory -Force ".\my_dataset\images\all"
+.\venv\Scripts\python.exe jolayolo.py -d ".\my_dataset"
 ```
 
 Eine Aktivierung oder Änderung der PowerShell-ExecutionPolicy ist dafür nicht nötig.
@@ -73,19 +73,23 @@ Eine Aktivierung oder Änderung der PowerShell-ExecutionPolicy ist dafür nicht 
 ## Start
 
 ```bash
-python jolayolo.py -d ./egg_dataset
+python jolayolo.py -d ./my_dataset
 ```
 
-Mit eigenen Klassen:
+Ohne `--classes` ist die Klassenliste leer; Klassen können jederzeit in der GUI mit `c` bearbeitet werden.
 
-```bash
-python jolayolo.py -d ./egg_dataset -c egg
-```
+### Klassen direkt übergeben
 
-Auch ein anderer Name ist möglich, z. B. `my_dataset`:
+Eine Klasse:
 
 ```bash
 python jolayolo.py -d ./my_dataset -c egg
+```
+
+Mehrere Klassen kommasepariert:
+
+```bash
+python jolayolo.py -d ./my_dataset -c "egg,broken_egg,dirt"
 ```
 
 ## Tastenkürzel
