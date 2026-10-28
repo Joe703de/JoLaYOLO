@@ -76,13 +76,22 @@ JoLaYOLO bleibt eine Windows-Anwendung. Nur die Konvertierung läuft in **Ubuntu
 
 ### Einmalige Einrichtung
 
-1. In **PowerShell als Administrator** Ubuntu installieren:
+1. In **PowerShell** zuerst prüfen, welche Distributionen installiert sind:
 
    ```powershell
+   wsl --list --verbose
+   ```
+
+   **Falls keine Distribution vorhanden ist**, in **PowerShell als Administrator** ausführen:
+
+   ```powershell
+   wsl --set-default-version 2
    wsl --install -d Ubuntu
    ```
 
-   Falls Windows dazu auffordert, den Rechner neu starten.
+   Danach gegebenenfalls Windows neu starten und Ubuntu wie in Schritt 2 öffnen, um Benutzername und Passwort anzulegen.
+
+   **Falls ein anderer Name angezeigt wird**, etwa `Ubuntu-24.04`, die Ausgabe von `wsl --list --verbose` zur weiteren Einrichtung weitergeben, damit der tatsächliche Name auch beim Export berücksichtigt werden kann. Der aktuelle Export-Button erwartet ausdrücklich `Ubuntu`; ein abweichender Name wird noch nicht automatisch erkannt. Nicht allein deshalb eine weitere Distribution installieren.
 
 2. **Ubuntu öffnen und den Linux-Benutzer einrichten:**
 
