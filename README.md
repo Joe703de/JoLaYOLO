@@ -82,9 +82,29 @@ JoLaYOLO bleibt eine Windows-Anwendung. Nur die Konvertierung läuft in **Ubuntu
    wsl --install -d Ubuntu
    ```
 
-   Falls Windows dazu auffordert, neu starten. Ubuntu einmal öffnen und Linux-Benutzername/Passwort anlegen. `wsl --list --verbose` sollte für `Ubuntu` Version `2` zeigen; andernfalls `wsl --set-version Ubuntu 2` ausführen.
+   Falls Windows dazu auffordert, den Rechner neu starten.
 
-2. Im **Ubuntu-Terminal** die separate Export-Umgebung anlegen (Ubuntu 24.04 mit Python 3.12 empfohlen):
+2. **Ubuntu öffnen und den Linux-Benutzer einrichten:**
+
+   Im Windows-Startmenü nach **Ubuntu** suchen und die Anwendung öffnen. Alternativ in **PowerShell** starten:
+
+   ```powershell
+   wsl -d Ubuntu
+   ```
+
+   Beim ersten Start einen Linux-Benutzernamen und ein Passwort anlegen und das Passwort wiederholen. Bei der Passworteingabe werden **keine Zeichen und keine Sternchen angezeigt** – das ist normal. Das Linux-Passwort wird später auch für `sudo` benötigt.
+
+   Die folgenden Linux-Befehle werden in diesem **Ubuntu-Terminal** ausgeführt, nicht in PowerShell. Ubuntu lässt sich später jederzeit auf dieselbe Weise wieder öffnen.
+
+   In **PowerShell** die Installation prüfen:
+
+   ```powershell
+   wsl --list --verbose
+   ```
+
+   Die Liste sollte für `Ubuntu` Version `2` zeigen. Nur wenn dort Version `1` steht, in PowerShell `wsl --set-version Ubuntu 2` ausführen. Dieser Befehl stellt eine vorhandene Distribution um, installiert aber keine. Bei `WSL_E_DISTRO_NOT_FOUND` zuerst die Installation aus Schritt 1 abschließen und Ubuntu öffnen.
+
+3. Im **Ubuntu-Terminal** die separate Export-Umgebung anlegen (Ubuntu 24.04 mit Python 3.12 empfohlen):
 
    ```bash
    sudo apt update
@@ -93,7 +113,7 @@ JoLaYOLO bleibt eine Windows-Anwendung. Nur die Konvertierung läuft in **Ubuntu
    ~/.venvs/jolayolo-export/bin/python -m pip install --upgrade pip
    ```
 
-3. Zum Windows-Checkout wechseln und Export-Pakete installieren. Beispiel: `C:\Users\Joe\JoLaYOLO` entspricht `/mnt/c/Users/Joe/JoLaYOLO`. Den Pfad an deinen Checkout anpassen, bei Leerzeichen in Anführungszeichen setzen:
+4. Zum Windows-Checkout wechseln und Export-Pakete installieren. Beispiel: `C:\Users\Joe\JoLaYOLO` entspricht `/mnt/c/Users/Joe/JoLaYOLO`. Den Pfad an deinen Checkout anpassen, bei Leerzeichen in Anführungszeichen setzen:
 
    ```bash
    cd "/mnt/c/Users/Joe/JoLaYOLO"
