@@ -33,7 +33,7 @@ egg_dataset/
 
 ### Ablauf
 
-1. **Bilder** in `egg_dataset/images/all/` ablegen.
+1. **Bilder** in `./egg_dataset/images/all/` ablegen.
 2. **Auto-Label**: JoLaYOLO lädt ein `.pt`-Modell und erzeugt Pseudo-Labels in `labels/pseudo/`.
 3. **Korrigieren**: Boxen anpassen, Status mit `v` auf `verified` setzen oder manuell labeln.
 4. **Trainieren**: JoLaYOLO baut `train/` und `val/` neu auf und startet `yolo detect train`.
@@ -59,13 +59,19 @@ pip install -r requirements.txt
 ## Start
 
 ```bash
-python jolayolo.py -d /pfad/zu/egg_dataset
+python jolayolo.py -d ./egg_dataset
 ```
 
 Mit eigenen Klassen:
 
 ```bash
-python jolayolo.py -d /pfad/zu/egg_dataset -c egg
+python jolayolo.py -d ./egg_dataset -c egg
+```
+
+Auch ein anderer Name ist möglich, z. B. `my_dataset`:
+
+```bash
+python jolayolo.py -d ./my_dataset -c egg
 ```
 
 ## Tastenkürzel
