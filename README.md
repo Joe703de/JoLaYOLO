@@ -37,6 +37,7 @@ egg_dataset/
 2. **Auto-Label**: JoLaYOLO lädt ein `.pt`-Modell und erzeugt Pseudo-Labels in `labels/pseudo/`.
 3. **Korrigieren**: Boxen anpassen, Status mit `v` auf `verified` setzen oder manuell labeln.
 4. **Trainieren**: JoLaYOLO baut `train/` und `val/` neu auf und startet `yolo detect train`.
+   Als Basismodell wird immer `yolov8n.pt` verwendet (Ultralytics lädt es beim ersten Mal herunter).
 5. **Exportieren**: `.pt`-Modell an den Assistenten senden, der auf Linux nach `.tflite` exportiert.
 
 ## Auschecken

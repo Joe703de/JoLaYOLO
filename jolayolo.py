@@ -342,6 +342,17 @@ class MainWindow(QtWidgets.QMainWindow):
                 return status
         return STATUS_UNLABELED
 
+    def _label_count_for_image(self, image_path, status):
+        if status == STATUS_UNLABELED:
+            return 0
+        label_file = self.label_path_for_status(image_path, status)
+        if not label_file.exists():
+            return 0
+        try:
+            return sum(1 for line in label_file.read_text(encoding="utf-8").splitlines() if line.strip())
+        except Exception:
+            return 0
+
     def current_status(self):
         if not hasattr(self, "current_image_path"):
             return STATUS_UNLABELED
@@ -515,7 +526,9 @@ class MainWindow(QtWidgets.QMainWindow):
             pixmap.fill(QtGui.QColor(STATUS_COLORS[status]))
             icon = QtGui.QIcon(pixmap)
 
-            item = QtWidgets.QListWidgetItem(icon, path.name)
+            label_count = self._label_count_for_image(path, status)
+            suffix = f"  ({label_count})"
+            item = QtWidgets.QListWidgetItem(icon, path.name + suffix)
             item.setData(Qt.ItemDataRole.UserRole, i)
             if i == self.index:
                 item.setSelected(True)
