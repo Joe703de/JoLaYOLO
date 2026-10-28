@@ -277,7 +277,7 @@ class GraphicsView(QtWidgets.QGraphicsView):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, dataset_dir, classes=None, config_file=None):
         super().__init__()
-        self.dataset_dir = Path(dataset_dir)
+        self.dataset_dir = Path(dataset_dir).resolve()
         self.images_dir = self.dataset_dir / "images" / "all"
         self.labels_dir = self.dataset_dir / "labels"
         self.config_file = Path(config_file) if config_file else self.dataset_dir / "jolayolo.json"
