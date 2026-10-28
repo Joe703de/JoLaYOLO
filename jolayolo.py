@@ -957,7 +957,7 @@ class MainWindow(QtWidgets.QMainWindow):
         nc = len(self.config["classes"])
         names = self.config["classes"]
         data_yaml = (
-            f"path: {self.dataset_dir.resolve()}\n"
+            f"path: .\n"
             f"train: train.txt\n"
             f"val: val.txt\n"
             f"nc: {nc}\n"
