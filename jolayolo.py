@@ -347,6 +347,9 @@ class MainWindow(QtWidgets.QMainWindow):
             return STATUS_UNLABELED
         return self.image_status(self.current_image_path)
 
+    def current_color(self):
+        return self.class_colors[self.current_class_index % len(self.class_colors)]
+
     # --- Config -------------------------------------------------------------
 
     def load_config(self):
