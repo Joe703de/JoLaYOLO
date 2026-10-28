@@ -70,28 +70,6 @@ New-Item -ItemType Directory -Force ".\my_dataset\images\all"
 
 Eine Aktivierung oder Änderung der PowerShell-ExecutionPolicy ist dafür nicht nötig.
 
-## Start
-
-```bash
-python jolayolo.py -d ./my_dataset
-```
-
-Ohne `--classes` ist die Klassenliste leer; Klassen können jederzeit in der GUI mit `c` bearbeitet werden.
-
-### Klassen direkt übergeben
-
-Eine Klasse:
-
-```bash
-python jolayolo.py -d ./my_dataset -c egg
-```
-
-Mehrere Klassen kommasepariert:
-
-```bash
-python jolayolo.py -d ./my_dataset -c "egg,broken_egg,dirt"
-```
-
 ## Lokaler TFLite-Export unter Windows
 
 JoLaYOLO bleibt eine Windows-Anwendung. Nur die Konvertierung läuft in **Ubuntu unter WSL2 auf demselben PC**, auf CPU; eine GPU ist nicht erforderlich. Die Dateien bleiben auf deinen Laufwerken. Es wird nichts zu GitHub oder zum Assistenten hochgeladen. Für Installation und gegebenenfalls automatische Paketdownloads wird Internet benötigt.
@@ -148,6 +126,28 @@ python export_worker.py --model "./my_dataset/runs/detect/train/weights/best.pt"
 Unter Windows funktioniert derselbe Worker-Aufruf mit dem Windows-Python und leitet lokal an die oben eingerichtete WSL-Umgebung weiter.
 
 Technischer Hintergrund: [Ultralytics-Exporter der verwendeten Version](https://github.com/ultralytics/ultralytics/blob/v8.3.203/ultralytics/engine/exporter.py), [WSL installieren](https://learn.microsoft.com/windows/wsl/install).
+
+## Start
+
+```bash
+python jolayolo.py -d ./my_dataset
+```
+
+Ohne `--classes` ist die Klassenliste leer; Klassen können jederzeit in der GUI mit `c` bearbeitet werden.
+
+### Klassen direkt übergeben
+
+Eine Klasse:
+
+```bash
+python jolayolo.py -d ./my_dataset -c egg
+```
+
+Mehrere Klassen kommasepariert:
+
+```bash
+python jolayolo.py -d ./my_dataset -c "egg,broken_egg,dirt"
+```
 
 ## Tastenkürzel
 
