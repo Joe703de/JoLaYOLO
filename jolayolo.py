@@ -144,13 +144,9 @@ class ResizableRect(QtWidgets.QGraphicsRectItem):
         if change == QtWidgets.QGraphicsItem.GraphicsItemChange.ItemPositionChange:
             self._update_handles()
             self._update_label_pos()
-        elif change == QtWidgets.QGraphicsItem.GraphicsItemChange.ItemGeometryChange:
-            self._update_handles()
-            self._update_label_pos()
         return super().itemChange(change, value)
 
-    def set_geometry(self, x, y, w, h):
-        self.setRect(x, y, w, h)
+    def update_after_resize(self):
         self._update_handles()
         self._update_label_pos()
 
@@ -690,11 +686,11 @@ class MainWindow(QtWidgets.QMainWindow):
         x1, x2 = sorted([x1, x2])
         y1, y2 = sorted([y1, y2])
         rect.setRect(x1, y1, x2 - x1, y2 - y1)
-        rect.update_geometry()
+        rect.update_after_resize()
 
     def on_box_changed(self):
         if self.selected_rect:
-            self.selected_rect.update_geometry()
+            self.selected_rect.update_after_resize()
         self.update_info()
 
     def set_class(self, class_index):
