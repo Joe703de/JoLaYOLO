@@ -488,10 +488,14 @@ class MainWindow(QtWidgets.QMainWindow):
             if search and search not in path.name.lower():
                 continue
             self.filtered_indices.append(i)
-            item = QtWidgets.QListWidgetItem(path.name)
+
+            # Farbiges Status-Icon erzeugen
+            pixmap = QtGui.QPixmap(12, 12)
+            pixmap.fill(QtGui.QColor(STATUS_COLORS[status]))
+            icon = QtGui.QIcon(pixmap)
+
+            item = QtWidgets.QListWidgetItem(icon, path.name)
             item.setData(Qt.ItemDataRole.UserRole, i)
-            item.setBackground(QtGui.QColor(STATUS_COLORS[status]))
-            item.setForeground(QtGui.QColor("white" if status in (STATUS_UNLABELED, STATUS_PSEUDO) else "black"))
             if i == self.index:
                 item.setSelected(True)
                 self.file_list.setCurrentItem(item)
