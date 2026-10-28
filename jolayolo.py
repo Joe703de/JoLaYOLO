@@ -463,6 +463,26 @@ class MainWindow(QtWidgets.QMainWindow):
         self.progress_bar.setFixedHeight(20)
         left_layout.addWidget(self.progress_bar)
 
+        # Segmented status bar: manual | verified | pseudo | unlabeled
+        self.status_segments = QtWidgets.QWidget()
+        seg_layout = QtWidgets.QHBoxLayout(self.status_segments)
+        seg_layout.setContentsMargins(0, 0, 0, 0)
+        seg_layout.setSpacing(2)
+        self.status_segments.setFixedHeight(12)
+        self.seg_manual = QtWidgets.QFrame()
+        self.seg_manual.setStyleSheet("background-color: #87CEEB; border-radius: 2px;")
+        self.seg_verified = QtWidgets.QFrame()
+        self.seg_verified.setStyleSheet("background-color: #90EE90; border-radius: 2px;")
+        self.seg_pseudo = QtWidgets.QFrame()
+        self.seg_pseudo.setStyleSheet("background-color: #FFA500; border-radius: 2px;")
+        self.seg_unlabeled = QtWidgets.QFrame()
+        self.seg_unlabeled.setStyleSheet("background-color: #808080; border-radius: 2px;")
+        seg_layout.addWidget(self.seg_manual)
+        seg_layout.addWidget(self.seg_verified)
+        seg_layout.addWidget(self.seg_pseudo)
+        seg_layout.addWidget(self.seg_unlabeled)
+        left_layout.addWidget(self.status_segments)
+
         # Workflow-Buttons
         left_layout.addSpacing(10)
 
@@ -601,16 +621,19 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.progress_bar.setValue(int(percent))
 
-        if counts[STATUS_VERIFIED] > 0:
-            self.progress_bar.setStyleSheet("""
-                QProgressBar { background-color: #333; border-radius: 4px; }
-                QProgressBar::chunk { background-color: #90EE90; border-radius: 4px; }
-            """)
-        elif counts[STATUS_MANUAL] > 0 or counts[STATUS_PSEUDO] > 0:
-            self.progress_bar.setStyleSheet("""
-                QProgressBar { background-color: #333; border-radius: 4px; }
-                QProgressBar::chunk { background-color: #87CEEB; border-radius: 4px; }
-            """)
+        # Update segmented status bar widths proportionally
+        def seg_width(count):
+            return int(count / total * 100) if total else 0
+
+        self.seg_manual.setMaximumWidth(seg_width(counts[STATUS_MANUAL]))
+        self.seg_verified.setMaximumWidth(seg_width(counts[STATUS_VERIFIED]))
+        self.seg_pseudo.setMaximumWidth(seg_width(counts[STATUS_PSEUDO]))
+        self.seg_unlabeled.setMaximumWidth(seg_width(counts[STATUS_UNLABELED]))
+        self.seg_manual.setVisible(counts[STATUS_MANUAL] > 0)
+        self.seg_verified.setVisible(counts[STATUS_VERIFIED] > 0)
+        self.seg_pseudo.setVisible(counts[STATUS_PSEUDO] > 0)
+        self.seg_unlabeled.setVisible(counts[STATUS_UNLABELED] > 0)
+        self.status_segments.update()
 
     # --- Bild laden / speichern ---------------------------------------------
 
