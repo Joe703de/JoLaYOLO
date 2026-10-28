@@ -523,10 +523,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.file_list = QtWidgets.QListWidget()
         self.file_list.setStyleSheet(
             "QListWidget { background-color: #222; color: #ccc; border: none; }"
-            "QListWidget::item { padding: 1px; border-radius: 2px; }"
+            "QListWidget::item { padding: 0px; border-radius: 2px; min-height: 16px; }"
             "QListWidget::item:selected { background-color: #444; color: white; }"
         )
         self.file_list.setSpacing(0)
+        self.file_list.setIconSize(QtCore.QSize(10, 10))
         self.file_list.itemClicked.connect(self.on_file_clicked)
         left_layout.addWidget(self.file_list)
 
