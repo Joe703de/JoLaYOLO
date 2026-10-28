@@ -14,7 +14,7 @@ Tastenkürzel:
     ← / →           Vorheriges / Nächstes Bild
     Entf            Ausgewählte Box löschen
     q / Esc         Beenden
-    r               Bild neu laden
+    r               Bild neu laden (ungepeicherte Änderungen gehen verloren)
     c               Klassen bearbeiten
     v               Aktuelles Bild als verified markieren (Pseudo -> verified)
 
@@ -23,7 +23,7 @@ Mausbefehle:
     Linker Klick auf Box        Box auswählen / verschieben
     Rechter Klick auf Box       Box auswählen
     Mausrad                     Zoomen (bezogen auf Mausposition)
-    Mittlere Maustaste + Ziehen Bild verschieben (Pan)
+    Mittlere Maustaste + Ziehen  Bild verschieben (Pan)
     Anfasser ziehen             Box in der Größe ändern
 """
 
@@ -517,7 +517,6 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.progress_bar.setValue(int(percent))
 
-        # Fortschrittsbalken-Farbe je nach Anteil
         if counts[STATUS_VERIFIED] > 0:
             self.progress_bar.setStyleSheet("""
                 QProgressBar { background-color: #333; border-radius: 4px; }
@@ -586,7 +585,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not hasattr(self, "current_image_path") or self.pixmap is None:
             return
 
-        # Alte Label-Dateien für dieses Bild löschen (nur relevante Ordner)
+        # Alte Label-Dateien für dieses Bild löschen
         for status in [STATUS_MANUAL, STATUS_PSEUDO, STATUS_VERIFIED]:
             lp = self.label_path_for_status(self.current_image_path, status)
             if lp.exists():
@@ -606,8 +605,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 line += f" {rect.confidence:.6f}"
             lines.append(line)
 
-        # Wenn es Pseudo war und nicht verifiziert wurde, bleibt es Pseudo.
-        # Wenn manuelle Änderungen gemacht wurden, wird es Manuell.
         target_status = STATUS_MANUAL
         current = self.current_status()
         if current == STATUS_PSEUDO and not getattr(self, "_verified_override", False):
@@ -867,13 +864,11 @@ class MainWindow(QtWidgets.QMainWindow):
         train_dir = self.labels_dir / "train"
         val_dir = self.labels_dir / "val"
 
-        # Aufräumen
         for d in [train_dir, val_dir]:
             if d.exists():
                 shutil.rmtree(d)
             d.mkdir(parents=True, exist_ok=True)
 
-        # Nur manuelle und verifizierte Labels verwenden
         usable_images = []
         for path in self.image_files:
             status = self.image_status(path)
