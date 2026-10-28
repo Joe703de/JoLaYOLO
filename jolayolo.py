@@ -450,7 +450,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Statistik / Fortschritt
         self.stats_label = QtWidgets.QLabel()
-        self.stats_label.setStyleSheet("color: #ccc; font-size: 12px;")
+        self.stats_label.setStyleSheet("color: #ccc; font-size: 11px;")
         left_layout.addWidget(self.stats_label)
 
         self.progress_bar = QtWidgets.QProgressBar()
@@ -595,8 +595,8 @@ class MainWindow(QtWidgets.QMainWindow):
         percent = (labeled / total * 100) if total else 0
 
         self.stats_label.setText(
-            f"Gesamt: {total} | Ungelabelt: {counts[STATUS_UNLABELED]} | "
-            f"Manuell: {counts[STATUS_MANUAL]} | Pseudo: {counts[STATUS_PSEUDO]} | "
+            f"Total: {total} | Unlabeled: {counts[STATUS_UNLABELED]} | "
+            f"Manual: {counts[STATUS_MANUAL]} | Pseudo: {counts[STATUS_PSEUDO]} | "
             f"Verified: {counts[STATUS_VERIFIED]}"
         )
         self.progress_bar.setValue(int(percent))
