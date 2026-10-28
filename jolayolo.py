@@ -357,6 +357,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.training_timer.setInterval(500)
         self.training_timer.timeout.connect(self._check_training)
         self.init_ui()
+        self.showMaximized()
         if self.image_files:
             self.load_image(self.index)
 
