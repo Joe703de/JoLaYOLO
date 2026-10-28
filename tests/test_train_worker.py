@@ -24,6 +24,7 @@ class WorkerCompletion(unittest.TestCase):
                 self.assertEqual(json.loads(result.read_text())['error'], 'failure')
             with patch.object(train_worker.sys, 'argv', argv), \
                  patch.object(train_worker.sys, 'platform', 'win32'), \
+                 patch.object(train_worker.sys.stdin, 'isatty', return_value=True), \
                  patch.object(train_worker, 'run', side_effect=RuntimeError('failure')), \
                  patch.object(train_worker.traceback, 'print_exc'), \
                  patch('builtins.input', side_effect=on_wait) as wait:

@@ -1045,8 +1045,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 f"Training erfolgreich abgeschlossen.\n\nBestes Modell:\n{Path(folder) / 'weights' / 'best.pt'}")
         else:
             self.statusBar().showMessage("Training fehlgeschlagen oder abgebrochen.")
+            details = result.get("error", "Unbekannter Fehler.")
+            if "stderr" in result:
+                details += "\n\nKonsolenausgabe:\n" + result["stderr"][-1500:]
             QtWidgets.QMessageBox.critical(self, "Training fehlgeschlagen",
-                f"{result['error']}\n\nDetails stehen in der Konsole. Unter Windows bleibt sie bis Enter offen.")
+                f"{details}\n\nDetails stehen außerdem in training_error.log im Dataset-Ordner.")
 
     def run_export(self):
         QtWidgets.QMessageBox.information(self, "TFLite Export",
