@@ -130,7 +130,9 @@ python jolayolo.py -d ./my_dataset -c egg
 - Mindestens zwei manuell gelabelte oder verifizierte Bilder werden benötigt. Train und Val überlappen nicht. Ungeprüfte Pseudo-Labels werden nicht verwendet; Confidence-Werte werden aus den Trainingskopien entfernt.
 - Bildnamen müssen ohne Endung eindeutig sein, auch bei unterschiedlicher Groß-/Kleinschreibung (z. B. nicht `Foto.jpg` und `foto.png`). Bilder liegen direkt in `images/all`, nicht in Unterordnern.
 - Trainingsausgabe: `<Dataset>/runs/detect/train*/weights/best.pt`. Auto-Label öffnet die Modellauswahl im Dataset-Run-Ordner. Das Basismodell liegt unter `<Dataset>/yolov8n.pt` und wird bei Bedarf heruntergeladen.
-- Unter Windows startet ein eigenes Konsolenfenster und bleibt bei Erfolg/Fehler bis Enter offen. Linux/macOS nutzt das bestehende Terminal. Kein `cmd /k`, `shell=True` oder `yolo.exe` aus einer fremden Umgebung.
+- Ein Einstellungsdialog enthält Epochen, Bildgröße und Batchgröße; die zuletzt verwendeten Werte werden gespeichert. Nach „Training starten“ folgen keine weiteren Bestätigungen. Ein zweiter Trainingsstart ist während des Trainings gesperrt.
+- JoLaYOLO meldet Erfolg (mit tatsächlichem Modellpfad) oder Fehler, solange die Anwendung geöffnet bleibt. Beim Schließen läuft der unabhängige Trainingsprozess weiter, aber die Abschlussmeldung in der Oberfläche entfällt.
+- Unter Windows startet ein eigenes Konsolenfenster: Bei Erfolg schließt es automatisch; bei Fehlern bleibt es bis Enter offen. Linux/macOS nutzt das bestehende Terminal. Kein `cmd /k`, `shell=True` oder `yolo.exe` aus einer fremden Umgebung.
 - Für bewusst geprüfte Hintergrundbilder ein leeres Bild mit `v` verifizieren. Bilder ohne Status-Label werden nicht ins Training aufgenommen.
 
 ## Pfad-Regressionstests

@@ -31,6 +31,8 @@ import argparse
 import json
 import subprocess
 import sys
+import tempfile
+import os
 from pathlib import Path
 
 from dataset_workflow import prepare_split, training_command
@@ -273,6 +275,42 @@ class GraphicsView(QtWidgets.QGraphicsView):
         super().mouseReleaseEvent(event)
 
 
+class TrainingDialog(QtWidgets.QDialog):
+    def __init__(self, parent, settings, image_count):
+        super().__init__(parent)
+        self.setWindowTitle("YOLO Training starten")
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(QtWidgets.QLabel(
+            f"{image_count} manuell gelabelte/verifizierte Bilder · Aufteilung 80 % / 20 %"))
+        form = QtWidgets.QFormLayout()
+        self.fields = {}
+        for key, title, default, minimum, maximum, step in (
+            ("epochs", "Epochen", 100, 1, 1000, 1),
+            ("imgsz", "Bildgröße (Pixel)", 640, 32, 1280, 32),
+            ("batch", "Batchgröße", 8, 1, 64, 1),
+        ):
+            field = QtWidgets.QSpinBox()
+            field.setRange(minimum, maximum)
+            field.setSingleStep(step)
+            field.setValue(settings.get(key, default))
+            self.fields[key] = field
+            form.addRow(title, field)
+        layout.addLayout(form)
+        layout.addWidget(QtWidgets.QLabel(
+            "Basismodell: YOLOv8n\nDer Fortschritt erscheint in der Konsole.\n"
+            "JoLaYOLO meldet das Trainingsende, solange die Anwendung geöffnet bleibt."))
+        buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Cancel).setText("Abbrechen")
+        start = buttons.addButton("Training starten", QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole)
+        start.setDefault(True)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def values(self):
+        return {key: field.value() for key, field in self.fields.items()}
+
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, dataset_dir, classes=None, config_file=None):
         super().__init__()
@@ -313,6 +351,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self._verified_override = False
         self._reading_labels = False
 
+        self.training_process = None
+        self.training_result_file = None
+        self.training_timer = QtCore.QTimer(self)
+        self.training_timer.setInterval(500)
+        self.training_timer.timeout.connect(self._check_training)
         self.init_ui()
         if self.image_files:
             self.load_image(self.index)
@@ -928,43 +971,73 @@ class MainWindow(QtWidgets.QMainWindow):
             return None, None, str(exc)
 
     def run_training(self):
+        if self.training_process is not None:
+            self.statusBar().showMessage("Training läuft bereits – Fortschritt siehe Konsole.")
+            return
         self.save_labels()
+        count = sum(self.image_status(p) in (STATUS_MANUAL, STATUS_VERIFIED) for p in self.image_files)
+        if count < 2:
+            QtWidgets.QMessageBox.warning(self, "Fehler",
+                "Mindestens zwei manuell gelabelte oder verifizierte Bilder erforderlich.")
+            return
+        dialog = TrainingDialog(self, self.config.get("training", {}), count)
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+        settings = dialog.values()
         train_images, val_images, error = self._prepare_train_val()
         if error:
             QtWidgets.QMessageBox.warning(self, "Fehler", error)
             return
-
-        epochs, ok = QtWidgets.QInputDialog.getInt(self, "Epochs", "Anzahl Epochen:", value=100, min=1, max=1000)
-        if not ok:
-            return
-        imgsz, ok = QtWidgets.QInputDialog.getInt(self, "Bildgröße", "imgsz:", value=640, min=32, max=1280)
-        if not ok:
-            return
-        batch, ok = QtWidgets.QInputDialog.getInt(self, "Batch", "batch:", value=8, min=1, max=64)
-        if not ok:
-            return
-
-        cmd = training_command(self.dataset_dir, epochs, imgsz, batch)
-
-        reply = QtWidgets.QMessageBox.question(
-            self, "Training starten",
-            f"Training mit {len(train_images)} Train- und {len(val_images)} Val-Bildern starten?\n\n"
-            f"{' '.join(cmd)}",
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
-        )
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
-            return
-
+        self.config["training"] = settings
+        self.save_config()
+        cmd = training_command(self.dataset_dir, **settings)
         try:
+            fd, result_path = tempfile.mkstemp(prefix="jolayolo-training-", suffix=".json")
+            os.close(fd)
+            self.training_result_file = Path(result_path)
+            cmd.extend(["--result-file", result_path])
             options = {"cwd": str(self.dataset_dir)}
             if sys.platform == "win32":
                 options["creationflags"] = subprocess.CREATE_NEW_CONSOLE
-            subprocess.Popen(cmd, **options)
-            QtWidgets.QMessageBox.information(self, "Gestartet",
-                "Training gestartet (Windows: neues Konsolenfenster; Linux/macOS: aktuelles Terminal).\n"
-                f"Ergebnis liegt später unter {self.dataset_dir / 'runs' / 'detect'}.")
+            self.training_process = subprocess.Popen(cmd, **options)
+            self.train_btn.setEnabled(False)
+            self.training_timer.start()
+            self.statusBar().showMessage(
+                f"Training läuft: {len(train_images)} Train- / {len(val_images)} Val-Bilder. Fortschritt siehe Konsole.")
         except Exception as e:
+            if self.training_result_file:
+                self.training_result_file.unlink(missing_ok=True)
+                self.training_result_file = None
             QtWidgets.QMessageBox.critical(self, "Fehler", f"Training konnte nicht gestartet werden:\n{e}")
+
+    def _check_training(self):
+        if self.training_process is None:
+            return
+        result = None
+        try:
+            result = json.loads(self.training_result_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            pass
+        if result is None:
+            code = self.training_process.poll()
+            if code is None:
+                return
+            result = {"success": False, "error": f"Trainingsprozess ohne Abschlussbericht beendet (Exit-Code {code})."}
+        self.training_timer.stop()
+        self.training_process = None
+        self.training_result_file.unlink(missing_ok=True)
+        self.training_result_file = None
+        self.train_btn.setEnabled(True)
+        QtWidgets.QApplication.alert(self)
+        if result["success"]:
+            folder = result["save_dir"]
+            self.statusBar().showMessage(f"Training abgeschlossen: {folder}")
+            QtWidgets.QMessageBox.information(self, "Training abgeschlossen",
+                f"Training erfolgreich abgeschlossen.\n\nBestes Modell:\n{Path(folder) / 'weights' / 'best.pt'}")
+        else:
+            self.statusBar().showMessage("Training fehlgeschlagen oder abgebrochen.")
+            QtWidgets.QMessageBox.critical(self, "Training fehlgeschlagen",
+                f"{result['error']}\n\nDetails stehen in der Konsole. Unter Windows bleibt sie bis Enter offen.")
 
     def run_export(self):
         QtWidgets.QMessageBox.information(self, "TFLite Export",

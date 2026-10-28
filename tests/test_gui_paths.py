@@ -39,13 +39,43 @@ class GuiPaths(unittest.TestCase):
             with patch.object(jolayolo.sys, 'platform', 'win32'), \
                  patch.object(jolayolo.subprocess, 'CREATE_NEW_CONSOLE', 16, create=True), \
                  patch.object(jolayolo.subprocess, 'Popen') as popen, \
-                 patch.object(QtWidgets.QInputDialog, 'getInt', return_value=(8, True)), \
+                 patch.object(jolayolo.TrainingDialog, 'exec', return_value=QtWidgets.QDialog.DialogCode.Accepted), \
                  patch.object(QtWidgets.QMessageBox, 'question', return_value=QtWidgets.QMessageBox.StandardButton.Yes), \
                  patch.object(QtWidgets.QMessageBox, 'information'):
                 window.run_training()
                 args, kwargs = popen.call_args
                 self.assertEqual(kwargs, {'cwd': str(root), 'creationflags': 16})
                 self.assertEqual(args[0][args[0].index('--dataset') + 1], str(root))
+                self.assertFalse(window.train_btn.isEnabled())
+                self.assertEqual(window.config['training'], {'epochs': 100, 'imgsz': 640, 'batch': 8})
+                # No completion file yet: running process must not produce a notification.
+                popen.return_value.poll.return_value = None
+                window._check_training()
+                self.assertIsNotNone(window.training_process)
+                import json
+                folder = root / 'runs' / 'detect' / 'train7'
+                window.training_result_file.write_text(json.dumps({'success': True, 'save_dir': str(folder)}))
+                with patch.object(QtWidgets.QMessageBox, 'information') as info:
+                    window._check_training()
+                    self.assertIn(str(folder / 'weights' / 'best.pt'), info.call_args.args[2])
+                self.assertTrue(window.train_btn.isEnabled())
+                self.assertIsNone(window.training_process)
+                # Cancel must not rebuild splits or start a worker.
+                with patch.object(jolayolo.TrainingDialog, 'exec', return_value=QtWidgets.QDialog.DialogCode.Rejected), \
+                     patch.object(window, '_prepare_train_val') as split:
+                    window.run_training()
+                    split.assert_not_called()
+                window.run_training()
+                popen.return_value.poll.return_value = 1
+                with patch.object(QtWidgets.QMessageBox, 'critical') as error:
+                    window._check_training()
+                    self.assertIn('Exit-Code 1', error.call_args.args[2])
+                window.run_training()
+                window.training_result_file.write_text(json.dumps({'success': False, 'error': 'GPU error'}))
+                popen.return_value.poll.return_value = None
+                with patch.object(QtWidgets.QMessageBox, 'critical') as error:
+                    window._check_training()
+                    self.assertIn('GPU error', error.call_args.args[2])
             window.close()
 
     def test_new_dataset_created_before_first_config_write(self):
