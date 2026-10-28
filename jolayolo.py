@@ -395,6 +395,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.training_timer = QtCore.QTimer(self)
         self.training_timer.setInterval(500)
         self.training_timer.timeout.connect(self._check_training)
+        self.export_process = None
+        self.export_result_file = None
+        self.export_timer = QtCore.QTimer(self)
+        self.export_timer.setInterval(500)
+        self.export_timer.timeout.connect(self._check_export)
         self.init_ui()
         self.showMaximized()
         if self.image_files:
@@ -1075,13 +1080,73 @@ class MainWindow(QtWidgets.QMainWindow):
                 f"{details}\n\nDetails stehen außerdem in training_error.log im Dataset-Ordner.")
 
     def run_export(self):
-        QtWidgets.QMessageBox.information(self, "TFLite Export",
-            "TFLite-Export funktioniert unter Windows nicht direkt.\n\n"
-            "Workflow:\n"
-            "1. Kopiere best.pt aus dem Trainings-Run.\n"
-            "2. Schiebe es ins GitHub-Repo unter upload/best.pt.\n"
-            "3. Sag mir Bescheid — ich exportiere es auf dem Linux-Host nach "
-            "app/src/main/assets/yolo_eggs.tflite und pushe es zurück.")
+        if self.export_process is not None:
+            return
+        model, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Modell für lokalen TFLite-Export wählen", str(self.dataset_dir / "runs" / "detect"),
+            "YOLO-Modell (*.pt)")
+        if not model:
+            return
+        output, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "TFLite-Datei speichern", str(Path(model).with_suffix('.tflite')),
+            "TFLite-Modell (*.tflite)")
+        if not output:
+            return
+        if not output.lower().endswith('.tflite'):
+            output += '.tflite'
+        imgsz, accepted = QtWidgets.QInputDialog.getInt(
+            self, "TFLite-Export", "Bildgröße (Vielfaches von 32; passend zur Ziel-App):",
+            self.config.get("training", {}).get("imgsz", 640), 32, 4096, 32)
+        if not accepted:
+            return
+        if imgsz % 32:
+            QtWidgets.QMessageBox.warning(self, "Bildgröße", "Bitte ein Vielfaches von 32 verwenden.")
+            return
+        try:
+            fd, result_path = tempfile.mkstemp(prefix="jolayolo-export-", suffix=".json")
+            os.close(fd)
+            self.export_result_file = Path(result_path)
+            cmd = [sys.executable, str(Path(__file__).with_name('export_worker.py').resolve()),
+                   '--model', str(Path(model).resolve()), '--output', str(Path(output).resolve()),
+                   '--imgsz', str(imgsz), '--result-file', result_path]
+            options = {"cwd": str(self.dataset_dir)}
+            if sys.platform == 'win32':
+                options['creationflags'] = subprocess.CREATE_NEW_CONSOLE
+            self.export_process = subprocess.Popen(cmd, **options)
+            self.export_btn.setEnabled(False)
+            self.export_timer.start()
+            self.statusBar().showMessage("Lokaler TFLite-Export läuft – Fortschritt siehe Konsole.")
+        except Exception as exc:
+            if self.export_result_file:
+                self.export_result_file.unlink(missing_ok=True)
+                self.export_result_file = None
+            QtWidgets.QMessageBox.critical(self, "Export konnte nicht starten", str(exc))
+
+    def _check_export(self):
+        if self.export_process is None:
+            return
+        try:
+            result = json.loads(self.export_result_file.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            code = self.export_process.poll()
+            if code is None:
+                return
+            result = {'success': False, 'error': f'Export ohne Abschlussbericht beendet (Exit-Code {code}).'}
+        self.export_timer.stop()
+        self.export_process = None
+        self.export_result_file.unlink(missing_ok=True)
+        self.export_result_file = None
+        self.export_btn.setEnabled(True)
+        QtWidgets.QApplication.alert(self)
+        if result['success']:
+            self.statusBar().showMessage(f"TFLite-Export abgeschlossen: {result['output']}")
+            QtWidgets.QMessageBox.information(self, "Export abgeschlossen", result['output'])
+        else:
+            self.statusBar().showMessage("TFLite-Export fehlgeschlagen.")
+            QtWidgets.QMessageBox.critical(self, "Export fehlgeschlagen",
+                result.get('error', 'Unbekannter Fehler.') +
+                "\n\nDetails: export_error.log im Ausgabeordner.\n" +
+                "Unter Windows: Ubuntu/WSL und Export-Umgebung gemäß README einrichten.")
 
 
 def main():
