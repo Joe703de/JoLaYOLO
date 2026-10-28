@@ -1,17 +1,43 @@
 # Joachim Labelt YOLO (JoLaYOLO)
 
-Ein einfaches, lokal lauffähiges Tool zum Labeln von Bildern im **YOLO-Format**.
+Ein lokales Label- und Trainings-Tool für **YOLOv8**, gebaut mit **PyQt6**.
 
-## Features
+## Workflow
 
-- Bilder aus einem Ordner laden und anzeigen
-- Bounding Boxen per Maus zeichnen
-- Klassen per Tastenkürzel oder Bearbeiten-Dialog wählen
-- Navigation zwischen Bildern mit automatischem Speichern
-- Letzte Position merken (Resume)
-- Negative-Beispiele durch leere Label-Dateien
-- Export im YOLO-Textformat: `<class_id> <x_center> <y_center> <width> <height>`
-- (Geplant: optionaler COCO-JSON-Export)
+JoLaYOLO organisiert ein Dataset nach dem YOLO-Standard:
+
+```
+egg_dataset/
+├── images/
+│   └── all/                    # alle Bilder
+├── labels/
+│   ├── manual/                 # von Hand gelabelt
+│   ├── pseudo/                 # automatisch gelabelt, noch ungeprüft
+│   ├── verified/               # Pseudo-Labels korrigiert / geprüft
+│   ├── train/                  # vor Training neu generiert
+│   └── val/                    # vor Training neu generiert
+├── train.txt                   # vor Training neu generiert
+├── val.txt                     # vor Training neu generiert
+├── data.yaml                   # vor Training neu generiert
+└── jolayolo.json               # Einstellungen
+```
+
+### Status-Farben
+
+| Farbe | Status | Bedeutung |
+|-------|--------|-----------|
+| Grau | `unlabeled` | noch keine `.txt` |
+| Orange | `pseudo` | automatisch gelabelt, muss geprüft werden |
+| Hellblau | `manual` | von Hand gelabelt |
+| Hellgrün | `verified` | Pseudo-Labels korrigiert / geprüft |
+
+### Ablauf
+
+1. **Bilder** in `egg_dataset/images/all/` ablegen.
+2. **Auto-Label**: JoLaYOLO lädt ein `.pt`-Modell und erzeugt Pseudo-Labels in `labels/pseudo/`.
+3. **Korrigieren**: Boxen anpassen, Status mit `v` auf `verified` setzen oder manuell labeln.
+4. **Trainieren**: JoLaYOLO baut `train/` und `val/` neu auf und startet `yolo detect train`.
+5. **Exportieren**: `.pt`-Modell an den Assistenten senden, der auf Linux nach `.tflite` exportiert.
 
 ## Installation
 
@@ -26,19 +52,13 @@ pip install -r requirements.txt
 ## Start
 
 ```bash
-python jolayolo.py -i /pfad/zu/bildern
+python jolayolo.py -d /pfad/zu/egg_dataset
 ```
 
 Mit eigenen Klassen:
 
 ```bash
-python jolayolo.py -i /pfad/zu/bildern -c egg,kein_ei
-```
-
-Labels werden standardmäßig im gleichen Ordner wie die Bilder abgelegt. Ein eigener Ausgabeordner ist möglich:
-
-```bash
-python jolayolo.py -i /pfad/zu/bildern -o /pfad/zu/labels
+python jolayolo.py -d /pfad/zu/egg_dataset -c egg
 ```
 
 ## Tastenkürzel
@@ -48,10 +68,10 @@ python jolayolo.py -i /pfad/zu/bildern -o /pfad/zu/labels
 | `1` – `9` | Klasse auswählen |
 | `Leertaste` / `→` | Nächstes Bild (automatisch speichern) |
 | `←` | Vorheriges Bild |
-| `Entf` / `d` | Ausgewählte Box löschen |
-| `+` / `-` | Zoomen |
+| `Entf` | Ausgewählte Box löschen |
 | `r` | Aktuelles Bild neu laden |
 | `c` | Klassen bearbeiten |
+| `v` | Aktuelles Pseudo-Bild als `verified` markieren |
 | `q` / `Esc` | Beenden und speichern |
 
 ## Mausbedienung
@@ -59,17 +79,21 @@ python jolayolo.py -i /pfad/zu/bildern -o /pfad/zu/labels
 | Aktion | Bedeutung |
 |--------|-----------|
 | Linker Klick + Ziehen | Neue Box zeichnen |
-| Linker Klick auf Box | Box auswählen |
+| Linker Klick auf Box | Box auswählen / verschieben |
 | Rechter Klick auf Box | Box auswählen |
+| Mausrad | Zoomen (zur Mausposition) |
+| Mittlere Maustaste + Ziehen | Pan |
+| Anfasser ziehen | Box in der Größe ändern |
 
 ## Dateien
 
 - `jolayolo.py` — Hauptanwendung
 - `requirements.txt` — Python-Abhängigkeiten
-- `jolayolo.json` — Wird im Bilderordner angelegt und speichert Klassen sowie letzte Position
+- `jolayolo.json` — Einstellungen im Dataset-Ordner
+- `data.yaml` — Wird vor dem Training neu generiert
 
-## Geplante Erweiterungen
+## Hinweise
 
-- COCO-JSON-Export
-- Boxen verschieben und in der Größe ändern
-- Pan beim Zoomen
+- **TFLite-Export** funktioniert unter Windows nicht direkt. Schiebe `best.pt` ins GitHub-Repo unter `upload/best.pt` und sag dem Assistenten Bescheid.
+- Vor jedem Training werden `labels/train/` und `labels/val/` automatisch geleert und neu aufgebaut.
+- Negative Beispiele brauchen keine leeren `.txt`-Dateien — Bilder ohne Label-Datei gelten automatisch als Hintergrund.
