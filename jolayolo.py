@@ -410,22 +410,27 @@ class MainWindow(QtWidgets.QMainWindow):
         # Workflow-Buttons
         left_layout.addSpacing(10)
 
-        self.auto_label_btn = QtWidgets.QPushButton("1. Auto-Label (PT-Modell)")
-        self.auto_label_btn.setStyleSheet("background-color: #FFA500; color: black; font-weight: bold; padding: 8px;")
-        self.auto_label_btn.clicked.connect(self.run_auto_label)
-        left_layout.addWidget(self.auto_label_btn)
-
-        self.train_btn = QtWidgets.QPushButton("2. YOLO Training starten")
+        self.train_btn = QtWidgets.QPushButton("1. YOLO Training starten")
         self.train_btn.setStyleSheet("background-color: #87CEEB; color: black; font-weight: bold; padding: 8px;")
         self.train_btn.clicked.connect(self.run_training)
         left_layout.addWidget(self.train_btn)
 
-        self.export_btn = QtWidgets.QPushButton("3. TFLite exportieren")
+        self.auto_label_btn = QtWidgets.QPushButton("2. Auto-Label mit best.pt")
+        self.auto_label_btn.setStyleSheet("background-color: #FFA500; color: black; font-weight: bold; padding: 8px;")
+        self.auto_label_btn.clicked.connect(self.run_auto_label)
+        left_layout.addWidget(self.auto_label_btn)
+
+        self.next_pseudo_btn = QtWidgets.QPushButton("3. Nächstes Pseudo-Bild")
+        self.next_pseudo_btn.setStyleSheet("background-color: #FFB84D; color: black; font-weight: bold; padding: 8px;")
+        self.next_pseudo_btn.clicked.connect(self.goto_next_pseudo)
+        left_layout.addWidget(self.next_pseudo_btn)
+
+        self.export_btn = QtWidgets.QPushButton("4. TFLite exportieren")
         self.export_btn.setStyleSheet("background-color: #90EE90; color: black; font-weight: bold; padding: 8px;")
         self.export_btn.clicked.connect(self.run_export)
         left_layout.addWidget(self.export_btn)
 
-        self.verify_btn = QtWidgets.QPushButton("Pseudo -> verified")
+        self.verify_btn = QtWidgets.QPushButton("Aktuelles Bild verifizieren (v)")
         self.verify_btn.setStyleSheet("background-color: #666; color: white; padding: 6px;")
         self.verify_btn.clicked.connect(self.verify_current_image)
         left_layout.addWidget(self.verify_btn)
@@ -434,7 +439,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Suchfeld
         self.search_edit = QtWidgets.QLineEdit()
-        self.search_edit.setPlaceholderText("Bilder suchen...")
+        self.search_edit.setPlaceholderText("Suchen oder Filter: @pseudo @manual @verified @unlabeled")
         self.search_edit.setStyleSheet("background-color: #333; color: white; padding: 6px;")
         self.search_edit.textChanged.connect(self.refresh_file_list)
         left_layout.addWidget(self.search_edit)
@@ -481,15 +486,31 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def refresh_file_list(self):
         self.file_list.clear()
-        search = self.search_edit.text().lower()
+        raw_search = self.search_edit.text().strip().lower()
+        status_filter = None
+        status_tokens = {
+            "@unlabeled": STATUS_UNLABELED,
+            "@manual": STATUS_MANUAL,
+            "@pseudo": STATUS_PSEUDO,
+            "@verified": STATUS_VERIFIED,
+        }
+        for token, st in status_tokens.items():
+            if token in raw_search:
+                status_filter = st
+                break
+        text_search = raw_search
+        for token in status_tokens:
+            text_search = text_search.replace(token, "").strip()
+
         self.filtered_indices = []
         for i, path in enumerate(self.image_files):
             status = self.image_status(path)
-            if search and search not in path.name.lower():
+            if status_filter and status != status_filter:
+                continue
+            if text_search and text_search not in path.name.lower():
                 continue
             self.filtered_indices.append(i)
 
-            # Farbiges Status-Icon erzeugen
             pixmap = QtGui.QPixmap(12, 12)
             pixmap.fill(QtGui.QColor(STATUS_COLORS[status]))
             icon = QtGui.QIcon(pixmap)
@@ -634,6 +655,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.scene.addItem(rect)
         self.rect_items.append(rect)
         self.select_box(rect)
+        # Bei manueller Änderung am Pseudo-Bild: automatisch verified setzen
+        if self.current_status() == STATUS_PSEUDO:
+            self._verified_override = True
         return rect
 
     def select_box(self, rect):
@@ -730,6 +754,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self._verified_override = True
         self.save_labels()
         self.load_image(self.index)
+
+    def goto_next_pseudo(self):
+        if not self.image_files:
+            return
+        n = len(self.image_files)
+        for offset in range(1, n + 1):
+            idx = (self.index + offset) % n
+            if self.image_status(self.image_files[idx]) == STATUS_PSEUDO:
+                self.load_image(idx)
+                return
+        QtWidgets.QMessageBox.information(self, "Fertig", "Keine weiteren Pseudo-Bilder vorhanden.")
 
     def next_image(self):
         if self.index < len(self.image_files) - 1:
