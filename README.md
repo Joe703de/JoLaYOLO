@@ -39,6 +39,13 @@ egg_dataset/
 4. **Trainieren**: JoLaYOLO baut `train/` und `val/` neu auf und startet `yolo detect train`.
 5. **Exportieren**: `.pt`-Modell an den Assistenten senden, der auf Linux nach `.tflite` exportiert.
 
+## Auschecken
+
+```bash
+git clone https://github.com/Joe703de/JoLaYOLO.git
+cd JoLaYOLO
+```
+
 ## Installation
 
 ```bash
