@@ -275,6 +275,45 @@ class GraphicsView(QtWidgets.QGraphicsView):
         super().mouseReleaseEvent(event)
 
 
+class DatasetStatusBar(QtWidgets.QWidget):
+    """Paint shared segment boundaries directly: no layout gaps or pixel/percent mixup."""
+    order = (STATUS_MANUAL, STATUS_VERIFIED, STATUS_PSEUDO, STATUS_UNLABELED)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.counts = {}
+        self.setFixedHeight(20)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
+                           QtWidgets.QSizePolicy.Policy.Fixed)
+
+    def set_counts(self, counts):
+        self.counts = dict(counts)
+        self.setToolTip(" | ".join(f"{status}: {self.counts.get(status, 0)}" for status in self.order))
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        total = sum(self.counts.values())
+        if not total:
+            painter.fillRect(self.rect(), QtGui.QColor(STATUS_COLORS[STATUS_UNLABELED]))
+            return
+        cumulative = 0
+        left = 0
+        for status in self.order:
+            cumulative += self.counts.get(status, 0)
+            right = round(self.width() * cumulative / total)
+            painter.fillRect(left, 0, right - left, self.height(), QtGui.QColor(STATUS_COLORS[status]))
+            left = right
+
+
+class CompactFileDelegate(QtWidgets.QStyledItemDelegate):
+    """Use content height, independent of native Windows item margins."""
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        size.setHeight(max(option.fontMetrics.height(), self.parent().iconSize().height()) + 2)
+        return size
+
+
 class TrainingDialog(QtWidgets.QDialog):
     def __init__(self, parent, settings, image_count):
         super().__init__(parent)
@@ -453,35 +492,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stats_label.setStyleSheet("color: #ccc; font-size: 11px;")
         left_layout.addWidget(self.stats_label)
 
-        self.progress_bar = QtWidgets.QProgressBar()
-        self.progress_bar.setMaximum(100)
-        self.progress_bar.setTextVisible(False)
-        self.progress_bar.setStyleSheet("""
-            QProgressBar { background-color: #333; border-radius: 4px; }
-            QProgressBar::chunk { border-radius: 4px; }
-        """)
-        self.progress_bar.setFixedHeight(20)
+        self.progress_bar = DatasetStatusBar()
         left_layout.addWidget(self.progress_bar)
-
-        # Segmented status bar: manual | verified | pseudo | unlabeled
-        self.status_segments = QtWidgets.QWidget()
-        seg_layout = QtWidgets.QHBoxLayout(self.status_segments)
-        seg_layout.setContentsMargins(0, 0, 0, 0)
-        seg_layout.setSpacing(2)
-        self.status_segments.setFixedHeight(12)
-        self.seg_manual = QtWidgets.QFrame()
-        self.seg_manual.setStyleSheet("background-color: #87CEEB; border-radius: 2px;")
-        self.seg_verified = QtWidgets.QFrame()
-        self.seg_verified.setStyleSheet("background-color: #90EE90; border-radius: 2px;")
-        self.seg_pseudo = QtWidgets.QFrame()
-        self.seg_pseudo.setStyleSheet("background-color: #FFA500; border-radius: 2px;")
-        self.seg_unlabeled = QtWidgets.QFrame()
-        self.seg_unlabeled.setStyleSheet("background-color: #808080; border-radius: 2px;")
-        seg_layout.addWidget(self.seg_manual)
-        seg_layout.addWidget(self.seg_verified)
-        seg_layout.addWidget(self.seg_pseudo)
-        seg_layout.addWidget(self.seg_unlabeled)
-        left_layout.addWidget(self.status_segments)
 
         # Workflow-Buttons
         left_layout.addSpacing(10)
@@ -523,10 +535,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.file_list = QtWidgets.QListWidget()
         self.file_list.setStyleSheet(
             "QListWidget { background-color: #222; color: #ccc; border: none; }"
-            "QListWidget::item { padding: 0px; border-radius: 2px; min-height: 16px; }"
+            "QListWidget::item { padding: 0px; margin: 0px; border: none; }"
             "QListWidget::item:selected { background-color: #444; color: white; }"
         )
         self.file_list.setSpacing(0)
+        self.file_list.setWordWrap(False)
+        self.file_list.setItemDelegate(CompactFileDelegate(self.file_list))
+        self.file_list.setUniformItemSizes(True)
         self.file_list.setIconSize(QtCore.QSize(10, 10))
         self.file_list.itemClicked.connect(self.on_file_clicked)
         left_layout.addWidget(self.file_list)
@@ -612,29 +627,13 @@ class MainWindow(QtWidgets.QMainWindow):
         for path in self.image_files:
             counts[self.image_status(path)] += 1
         total = len(self.image_files)
-        labeled = total - counts[STATUS_UNLABELED]
-        percent = (labeled / total * 100) if total else 0
 
         self.stats_label.setText(
             f"Total: {total} | Unlabeled: {counts[STATUS_UNLABELED]} | "
             f"Manual: {counts[STATUS_MANUAL]} | Pseudo: {counts[STATUS_PSEUDO]} | "
             f"Verified: {counts[STATUS_VERIFIED]}"
         )
-        self.progress_bar.setValue(int(percent))
-
-        # Update segmented status bar widths proportionally
-        def seg_width(count):
-            return int(count / total * 100) if total else 0
-
-        self.seg_manual.setMaximumWidth(seg_width(counts[STATUS_MANUAL]))
-        self.seg_verified.setMaximumWidth(seg_width(counts[STATUS_VERIFIED]))
-        self.seg_pseudo.setMaximumWidth(seg_width(counts[STATUS_PSEUDO]))
-        self.seg_unlabeled.setMaximumWidth(seg_width(counts[STATUS_UNLABELED]))
-        self.seg_manual.setVisible(counts[STATUS_MANUAL] > 0)
-        self.seg_verified.setVisible(counts[STATUS_VERIFIED] > 0)
-        self.seg_pseudo.setVisible(counts[STATUS_PSEUDO] > 0)
-        self.seg_unlabeled.setVisible(counts[STATUS_UNLABELED] > 0)
-        self.status_segments.update()
+        self.progress_bar.set_counts(counts)
 
     # --- Bild laden / speichern ---------------------------------------------
 
