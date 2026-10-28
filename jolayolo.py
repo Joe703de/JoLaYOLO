@@ -500,13 +500,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.search_edit.textChanged.connect(self.refresh_file_list)
         left_layout.addWidget(self.search_edit)
 
-        # Dateiliste
         self.file_list = QtWidgets.QListWidget()
         self.file_list.setStyleSheet(
             "QListWidget { background-color: #222; color: #ccc; border: none; }"
-            "QListWidget::item { padding: 4px; border-radius: 3px; }"
+            "QListWidget::item { padding: 1px; border-radius: 2px; }"
             "QListWidget::item:selected { background-color: #444; color: white; }"
         )
+        self.file_list.setSpacing(0)
         self.file_list.itemClicked.connect(self.on_file_clicked)
         left_layout.addWidget(self.file_list)
 
