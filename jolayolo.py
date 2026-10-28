@@ -1008,16 +1008,15 @@ class MainWindow(QtWidgets.QMainWindow):
             if sys.platform == "win32":
                 # Neues CMD-Fenster im Dataset-Ordner öffnen, Training darin laufen lassen
                 dataset_dir_str = str(self.dataset_dir)
-                yolo_cmd = " ".join([
-                    "yolo", "detect", "train",
-                    f"data=data.yaml",
-                    f"model={base_model}",
-                    f"epochs={epochs}",
-                    f"imgsz={imgsz}",
-                    f"batch={batch}",
-                ])
-                full_cmd = f'cd /d "{dataset_dir_str}" && {yolo_cmd}'
-                subprocess.Popen(["cmd", "/k", full_cmd], shell=False)
+                subprocess.Popen(
+                    ["cmd", "/k", "yolo", "detect", "train",
+                     "data=data.yaml",
+                     f"model={base_model}",
+                     f"epochs={epochs}",
+                     f"imgsz={imgsz}",
+                     f"batch={batch}"],
+                    cwd=dataset_dir_str,
+                )
             else:
                 subprocess.Popen(cmd, cwd=str(self.dataset_dir))
             QtWidgets.QMessageBox.information(self, "Gestartet",
