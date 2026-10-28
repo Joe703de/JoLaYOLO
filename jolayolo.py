@@ -310,6 +310,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.selected_rect = None
         self.rect_items = []
 
+        self._verified_override = False
+
         self._ensure_dirs()
         self.init_ui()
         if self.image_files:
