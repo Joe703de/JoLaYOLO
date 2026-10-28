@@ -719,6 +719,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rect_items.append(rect)
         self.select_box(rect)
         # Bei manueller Änderung am Pseudo-Bild: automatisch verified setzen
+        self.update_info()
         if not self._reading_labels and self.current_status() == STATUS_PSEUDO:
             self._verified_override = True
         return rect
@@ -742,6 +743,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.rect_items.remove(self.selected_rect)
             self.selected_rect = None
             self.update_info()
+            self.save_labels()
 
     def handle_at(self, scene_pos):
         if self.selected_rect is None:
@@ -816,7 +818,11 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         self._verified_override = True
         self.save_labels()
-        self.load_image(self.index)
+        if self.index < len(self.image_files) - 1:
+            self.load_image(self.index + 1)
+        else:
+            self.load_image(self.index)
+            self.update_info()
 
     def goto_next_pseudo(self):
         if not self.image_files:
