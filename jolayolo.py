@@ -961,11 +961,7 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "Fehler", error)
             return
 
-        base_model, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Basismodell wählen", "", "PyTorch Modelle (*.pt)"
-        )
-        if not base_model:
-            return
+        base_model = "yolov8n.pt"
 
         epochs, ok = QtWidgets.QInputDialog.getInt(self, "Epochs", "Anzahl Epochen:", value=100, min=1, max=1000)
         if not ok:
