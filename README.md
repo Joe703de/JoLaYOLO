@@ -113,7 +113,11 @@ JoLaYOLO bleibt eine Windows-Anwendung. Nur die Konvertierung läuft in **Ubuntu
 
    Die Liste sollte für `Ubuntu` Version `2` zeigen. Nur wenn dort Version `1` steht, in PowerShell `wsl --set-version Ubuntu 2` ausführen. Dieser Befehl stellt eine vorhandene Distribution um, installiert aber keine. Bei `WSL_E_DISTRO_NOT_FOUND` zuerst die Installation aus Schritt 1 abschließen und Ubuntu öffnen.
 
-3. Im **Ubuntu-Terminal** die separate Export-Umgebung anlegen (Ubuntu 24.04 mit Python 3.12 empfohlen):
+3. Im **Ubuntu-Terminal** die separate Export-Umgebung anlegen (empfohlen: Ubuntu 24.04 mit Python 3.12):
+
+   **Achtung:** Ubuntu 26.04 wird mit **Python 3.14** ausgeliefert, das von TensorFlow 2.19 noch nicht unterstützt wird. Auf Ubuntu 26.04 daher zuerst Python 3.12 aus dem PPA installieren und damit den venv anlegen.
+
+   Für **Ubuntu 24.04**:
 
    ```bash
    sudo apt update
@@ -122,11 +126,28 @@ JoLaYOLO bleibt eine Windows-Anwendung. Nur die Konvertierung läuft in **Ubuntu
    ~/.venvs/jolayolo-export/bin/python -m pip install --upgrade pip
    ```
 
+   Für **Ubuntu 26.04**:
+
+   ```bash
+   sudo add-apt-repository ppa:deadsnakes/ppa
+   sudo apt update
+   sudo apt install -y python3.12 python3.12-venv libgl1 libglib2.0-0
+   rm -rf ~/.venvs/jolayolo-export
+   python3.12 -m venv ~/.venvs/jolayolo-export
+   ~/.venvs/jolayolo-export/bin/python -m pip install --upgrade pip
+   ```
+
 4. Weiterhin im **Ubuntu-Terminal** in den **JoLaYOLO-Ordner** wechseln und Export-Pakete installieren. Beispiel: `C:\Users\Joe\JoLaYOLO` entspricht in Ubuntu `/mnt/c/Users/Joe/JoLaYOLO`. Den Pfad an deinen Ordner anpassen, Leerzeichen in Anführungszeichen setzen:
 
    ```bash
    cd "/mnt/c/Users/Joe/JoLaYOLO"
    ~/.venvs/jolayolo-export/bin/python -m pip install -r requirements-export.txt
+   ```
+
+   Falls große Pakete wie TensorFlow beim Download abbrechen, den Vorgang mit erhöhter Wiederholung und Timeout wiederholen:
+
+   ```bash
+   ~/.venvs/jolayolo-export/bin/python -m pip install -r requirements-export.txt --resume-retries 20 --default-timeout 300
    ```
 
    Die separate Umgebung hält die Export-Pakete von deinem Windows-Training getrennt. Die Export-Version ist bewusst auf Ultralytics 8.3.203 festgelegt, das den klassischen YOLOv8-TFLite-Export unterstützt. Nicht unabhängig aktualisieren: Neuere Versionen können den Exportpfad ändern. Der hier unterstützte Modelltyp ist YOLOv8.
