@@ -179,7 +179,22 @@ Technischer Hintergrund: [Ultralytics-Exporter der verwendeten Version](https://
 
 ## Start
 
-```bash
+Falls noch nicht geschehen, Abhängigkeiten installieren:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+JoLaYOLO starten:
+
+```powershell
+python jolayolo.py -d ./my_dataset
+```
+
+Wenn du eine lokale virtuelle Umgebung nutzt (z. B. `venv`), vor dem Start aktivieren:
+
+```powershell
+venv\Scripts\activate
 python jolayolo.py -d ./my_dataset
 ```
 
