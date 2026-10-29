@@ -122,7 +122,7 @@ JoLaYOLO bleibt eine Windows-Anwendung. Nur die Konvertierung läuft in **Ubuntu
    ~/.venvs/jolayolo-export/bin/python -m pip install --upgrade pip
    ```
 
-4. Zum Windows-Checkout wechseln und Export-Pakete installieren. Beispiel: `C:\Users\Joe\JoLaYOLO` entspricht `/mnt/c/Users/Joe/JoLaYOLO`. Den Pfad an deinen Checkout anpassen, bei Leerzeichen in Anführungszeichen setzen:
+4. Weiterhin im **Ubuntu-Terminal** in den **JoLaYOLO-Ordner** wechseln und Export-Pakete installieren. Beispiel: `C:\Users\Joe\JoLaYOLO` entspricht in Ubuntu `/mnt/c/Users/Joe/JoLaYOLO`. Den Pfad an deinen Ordner anpassen, Leerzeichen in Anführungszeichen setzen:
 
    ```bash
    cd "/mnt/c/Users/Joe/JoLaYOLO"
