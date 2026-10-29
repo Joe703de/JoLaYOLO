@@ -10,3 +10,13 @@ onnx-graphsurgeon>=0.3.26
 sng4onnx>=1.0.1
 ai-edge-litert>=1.2.0,<1.4.0
 protobuf>=5,<6
+onnxscript
+opencv-python-headless
+psutil
+pyyaml
+matplotlib
+scipy
+ultralytics-thop
+colorama
+
+# PyTorch: install torch + torchvision either from PyPI or https://download.pytorch.org/whl/cpu
