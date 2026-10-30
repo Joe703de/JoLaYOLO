@@ -449,12 +449,15 @@ class MainWindow(QtWidgets.QMainWindow):
             if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS
         ]) if self.images_dir.exists() else []
 
+        ui_ready = hasattr(self, "file_list")
+
         if not self.image_files:
             self.index = 0
-            self.file_list.clear()
-            self.update_stats()
-            self.info_label.setText("Keine Bilder geladen.")
-            self.setWindowTitle("JoLaYOLO")
+            if ui_ready:
+                self.file_list.clear()
+                self.update_stats()
+                self.info_label.setText("Keine Bilder geladen.")
+                self.setWindowTitle("JoLaYOLO")
             if not silent:
                 QtWidgets.QMessageBox.information(self, "Aktualisiert",
                     f"Keine Bilder in {self.images_dir} gefunden.")
@@ -464,7 +467,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.index = self.image_files.index(old_path)
         else:
             self.index = max(0, min(self.config.get("last_index", 0), len(self.image_files) - 1))
-        self.refresh_file_list()
+        if ui_ready:
+            self.refresh_file_list()
 
     def label_path_for_status(self, image_path, status):
         if status == STATUS_UNLABELED:
