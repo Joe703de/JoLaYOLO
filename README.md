@@ -2,6 +2,10 @@
 
 Ein lokales Label- und Trainings-Tool für **YOLOv8**, gebaut mit **PyQt6**.
 
+## TODO
+
+- [ ] Optionalen Abschnitt für GPU-Training unter Windows ergänzen (CUDA-PyTorch für NVIDIA RTX).
+
 ## Workflow
 
 JoLaYOLO organisiert ein Dataset nach dem YOLO-Standard:
