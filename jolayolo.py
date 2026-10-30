@@ -549,6 +549,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.file_list.setUniformItemSizes(True)
         self.file_list.setIconSize(QtCore.QSize(10, 10))
         self.file_list.itemClicked.connect(self.on_file_clicked)
+        self.file_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.file_list.customContextMenuRequested.connect(self.show_file_list_context_menu)
         left_layout.addWidget(self.file_list)
 
         # Status-Legende
@@ -626,6 +628,71 @@ class MainWindow(QtWidgets.QMainWindow):
         idx = item.data(Qt.ItemDataRole.UserRole)
         if idx != self.index:
             self.load_image(idx)
+
+    def _status_label(self, status):
+        names = {
+            STATUS_UNLABELED: "Unlabeled",
+            STATUS_MANUAL: "Manual",
+            STATUS_PSEUDO: "Pseudo",
+            STATUS_VERIFIED: "Verified",
+        }
+        return names.get(status, status)
+
+    def set_image_status(self, image_path, new_status):
+        """Move or delete label files so image_path ends up with the requested status."""
+        current_status = self.image_status(image_path)
+        if current_status == new_status:
+            return
+
+        if current_status != STATUS_UNLABELED:
+            current_label = self.label_path_for_status(image_path, current_status)
+            if current_label and current_label.exists():
+                if new_status == STATUS_UNLABELED:
+                    reply = QtWidgets.QMessageBox.question(
+                        self, "Label löschen",
+                        f"Soll die Labeldatei für {image_path.name} gelöscht werden?",
+                        QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+                        QtWidgets.QMessageBox.StandardButton.No
+                    )
+                    if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+                        return
+                    current_label.unlink()
+                else:
+                    target_label = self.label_path_for_status(image_path, new_status)
+                    target_label.parent.mkdir(parents=True, exist_ok=True)
+                    current_label.rename(target_label)
+        else:
+            # Currently unlabeled and target requires a label file: create empty one
+            if new_status != STATUS_UNLABELED:
+                target_label = self.label_path_for_status(image_path, new_status)
+                target_label.parent.mkdir(parents=True, exist_ok=True)
+                target_label.write_text("", encoding="utf-8")
+
+        # If we just changed the currently displayed image, refresh its labels
+        if hasattr(self, "current_image_path") and self.current_image_path == image_path:
+            self.read_labels(image_path)
+            self.refresh_canvas()
+        self.refresh_file_list()
+
+    def show_file_list_context_menu(self, pos):
+        item = self.file_list.itemAt(pos)
+        if not item:
+            return
+        idx = item.data(Qt.ItemDataRole.UserRole)
+        image_path = self.image_files[idx]
+        current_status = self.image_status(image_path)
+
+        menu = QtWidgets.QMenu(self)
+        menu.setStyleSheet("QMenu { background-color: #333; color: white; } "
+                           "QMenu::item:selected { background-color: #555; }")
+
+        for status in [STATUS_UNLABELED, STATUS_MANUAL, STATUS_PSEUDO, STATUS_VERIFIED]:
+            if status == current_status:
+                continue
+            action = menu.addAction(f"Als {self._status_label(status)} markieren")
+            action.triggered.connect(lambda checked=False, s=status: self.set_image_status(image_path, s))
+
+        menu.exec(self.file_list.mapToGlobal(pos))
 
     def update_stats(self):
         counts = {s: 0 for s in [STATUS_UNLABELED, STATUS_MANUAL, STATUS_PSEUDO, STATUS_VERIFIED]}
