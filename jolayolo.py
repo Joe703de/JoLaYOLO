@@ -895,6 +895,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.selected_rect = None
         self.update_info()
 
+    def select_next_box(self, backward=False):
+        if not self.rect_items:
+            return
+        if self.selected_rect is None or self.selected_rect not in self.rect_items:
+            idx = len(self.rect_items) - 1 if backward else 0
+        else:
+            idx = self.rect_items.index(self.selected_rect)
+            idx = (idx - 1) if backward else (idx + 1)
+            idx %= len(self.rect_items)
+        self.select_box(self.rect_items[idx])
+
     def delete_selected(self):
         if self.selected_rect and self.selected_rect in self.rect_items:
             self.scene.removeItem(self.selected_rect)
@@ -1033,6 +1044,12 @@ class MainWindow(QtWidgets.QMainWindow):
                     return True
                 elif key == Qt.Key.Key_V:
                     self.verify_current_image()
+                    return True
+                elif key == Qt.Key.Key_Tab:
+                    self.select_next_box(backward=False)
+                    return True
+                elif key == Qt.Key.Key_Backtab:
+                    self.select_next_box(backward=True)
                     return True
                 elif key == Qt.Key.Key_R:
                     self.load_image(self.index)
