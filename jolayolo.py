@@ -668,6 +668,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.view.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
         self.refresh_file_list()
         self.update_info()
+        # Keep file list selection in sync with current image, even when filtered
+        for row in range(self.file_list.count()):
+            item = self.file_list.item(row)
+            if item and item.data(Qt.ItemDataRole.UserRole) == self.index:
+                self.file_list.setCurrentItem(item)
+                self.file_list.scrollToItem(item)
+                break
 
     def read_labels(self, image_path):
         status = self.image_status(image_path)
@@ -867,12 +874,26 @@ class MainWindow(QtWidgets.QMainWindow):
         QtWidgets.QMessageBox.information(self, "Fertig", "Keine weiteren Pseudo-Bilder vorhanden.")
 
     def next_image(self):
-        if self.index < len(self.image_files) - 1:
-            self.load_image(self.index + 1)
+        if not self.filtered_indices:
+            return
+        try:
+            pos = self.filtered_indices.index(self.index)
+        except ValueError:
+            self.load_image(self.filtered_indices[0])
+            return
+        if pos < len(self.filtered_indices) - 1:
+            self.load_image(self.filtered_indices[pos + 1])
 
     def prev_image(self):
-        if self.index > 0:
-            self.load_image(self.index - 1)
+        if not self.filtered_indices:
+            return
+        try:
+            pos = self.filtered_indices.index(self.index)
+        except ValueError:
+            self.load_image(self.filtered_indices[-1])
+            return
+        if pos > 0:
+            self.load_image(self.filtered_indices[pos - 1])
 
     def keyPressEvent(self, event):
         key = event.key()
