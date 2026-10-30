@@ -68,7 +68,7 @@ STATUS_NAMES = {
 
 
 class ResizableRect(QtWidgets.QGraphicsRectItem):
-    HANDLE_SIZE = 10
+    HANDLE_SIZE = 14
 
     def __init__(self, x, y, w, h, class_id, class_name, color, source="manual", confidence=None, parent=None):
         super().__init__(x, y, w, h, parent)
@@ -107,7 +107,10 @@ class ResizableRect(QtWidgets.QGraphicsRectItem):
             handle.setBrush(QtGui.QBrush(QtGui.QColor(self.color)))
             handle.setPen(QtGui.QPen(QtGui.QColor("white"), 1))
             handle.setFlag(QtWidgets.QGraphicsRectItem.GraphicsItemFlag.ItemIsMovable, False)
+            handle.setFlag(QtWidgets.QGraphicsRectItem.GraphicsItemFlag.ItemIsSelectable, True)
+            handle.setAcceptHoverEvents(True)
             handle.setVisible(False)
+            handle.setZValue(10)
             self.handles.append(handle)
 
     def _update_label_pos(self):
@@ -202,6 +205,26 @@ class GraphicsView(QtWidgets.QGraphicsView):
             return
 
         if event.button() == Qt.MouseButton.LeftButton:
+            # If the click hit a handle, start resizing immediately
+            clicked_handle_parent = None
+            handle_name = None
+            if item is not None:
+                parent = item.parentItem()
+                if isinstance(parent, ResizableRect) and item in parent.handles:
+                    clicked_handle_parent = parent
+                    idx = parent.handles.index(item)
+                    names = ["nw", "n", "ne", "e", "se", "s", "sw", "w"]
+                    handle_name = names[idx]
+            if clicked_handle_parent and handle_name:
+                rect = clicked_handle_parent
+                self._resizing = True
+                self._resize_handle = handle_name
+                self._resize_item = rect
+                self._resize_start_rect = QtCore.QRectF(rect.rect())
+                self._resize_start_pos = scene_pos
+                self._parent.select_box(rect)
+                return
+
             handle_info = self._parent.handle_at(scene_pos)
             if handle_info:
                 rect, handle_name = handle_info
