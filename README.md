@@ -102,6 +102,8 @@ python jolayolo.py -d ./my_dataset -c "egg,broken_egg,dirt"
 | `Leertaste` / `→` | Nächstes Bild (automatisch speichern) |
 | `←` | Vorheriges Bild |
 | `Entf` | Ausgewählte Box löschen |
+| `Tab` | Nächste Box des aktuellen Bildes auswählen |
+| `Shift` + `Tab` | Vorherige Box des aktuellen Bildes auswählen |
 | `r` | Aktuelles Bild neu laden |
 | `u` | Bilder in `images/all/` neu einlesen (neue/gelöschte Bilder erkennen) |
 | `c` | Klassen bearbeiten |
