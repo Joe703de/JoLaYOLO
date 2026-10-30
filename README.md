@@ -103,6 +103,7 @@ python jolayolo.py -d ./my_dataset -c "egg,broken_egg,dirt"
 | `←` | Vorheriges Bild |
 | `Entf` | Ausgewählte Box löschen |
 | `r` | Aktuelles Bild neu laden |
+| `u` | Bilder in `images/all/` neu einlesen (neue/gelöschte Bilder erkennen) |
 | `c` | Klassen bearbeiten |
 | `v` | Aktuelles Pseudo-Bild als `verified` markieren |
 | `q` / `Esc` | Beenden und speichern |
