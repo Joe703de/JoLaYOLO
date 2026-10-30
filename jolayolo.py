@@ -599,7 +599,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.file_list.setItemDelegate(CompactFileDelegate(self.file_list))
         self.file_list.setUniformItemSizes(True)
         self.file_list.setIconSize(QtCore.QSize(10, 10))
-        self.file_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.file_list.itemClicked.connect(self.on_file_clicked)
         self.file_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.file_list.customContextMenuRequested.connect(self.show_file_list_context_menu)
@@ -632,6 +631,9 @@ class MainWindow(QtWidgets.QMainWindow):
         main_layout.addWidget(self.info_label)
 
         layout.addWidget(main_widget, 1)
+
+        # Global key navigation: always handle arrows/space unless a text widget has focus
+        QtWidgets.QApplication.instance().installEventFilter(self)
 
     # --- Dateiliste ---------------------------------------------------------
 
@@ -1013,6 +1015,36 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         if pos > 0:
             self.load_image(self.filtered_indices[pos - 1])
+
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.Type.KeyPress:
+            key = event.key()
+            focus_widget = QtWidgets.QApplication.focusWidget()
+            text_widget = isinstance(focus_widget, (QtWidgets.QLineEdit, QtWidgets.QTextEdit, QtWidgets.QPlainTextEdit))
+            if not text_widget:
+                if key == Qt.Key.Key_Space or key == Qt.Key.Key_Right:
+                    self.next_image()
+                    return True
+                elif key == Qt.Key.Key_Left:
+                    self.prev_image()
+                    return True
+                elif key == Qt.Key.Key_U:
+                    self.reload_images()
+                    return True
+                elif key == Qt.Key.Key_V:
+                    self.verify_current_image()
+                    return True
+                elif key == Qt.Key.Key_R:
+                    self.load_image(self.index)
+                    return True
+                elif key == Qt.Key.Key_Delete:
+                    self.delete_selected()
+                    return True
+                elif Qt.Key.Key_1 <= key <= Qt.Key.Key_9:
+                    class_index = key - Qt.Key.Key_1
+                    self.set_class(class_index)
+                    return True
+        return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event):
         key = event.key()
