@@ -593,6 +593,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "QListWidget { background-color: #222; color: #ccc; border: none; }"
             "QListWidget::item { padding: 0px; margin: 0px; border: none; }"
             "QListWidget::item:selected { background-color: #444; color: white; }"
+            "QListWidget::item:selected.mismatch { background-color: #7a4a00; color: white; }"
         )
         self.file_list.setSpacing(0)
         self.file_list.setWordWrap(False)
@@ -600,6 +601,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.file_list.setUniformItemSizes(True)
         self.file_list.setIconSize(QtCore.QSize(10, 10))
         self.file_list.itemClicked.connect(self.on_file_clicked)
+        self.file_list.currentRowChanged.connect(self._on_list_row_changed)
+        self.file_list.itemActivated.connect(self.on_file_clicked)
         self.file_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.file_list.customContextMenuRequested.connect(self.show_file_list_context_menu)
         left_layout.addWidget(self.file_list)
@@ -682,6 +685,19 @@ class MainWindow(QtWidgets.QMainWindow):
         idx = item.data(Qt.ItemDataRole.UserRole)
         if idx != self.index:
             self.load_image(idx)
+
+    def _on_list_row_changed(self, row):
+        item = self.file_list.item(row)
+        if not item:
+            return
+        idx = item.data(Qt.ItemDataRole.UserRole)
+        is_mismatch = idx != self.index
+        if is_mismatch:
+            item.setBackground(QtGui.QColor("#7a4a00"))
+            item.setForeground(QtGui.QColor("white"))
+        else:
+            item.setBackground(QtGui.QColor("transparent"))
+            item.setForeground(QtGui.QColor("#ccc"))
 
     def _status_label(self, status):
         names = {
@@ -1055,6 +1071,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 elif key == Qt.Key.Key_R:
                     self.load_image(self.index)
                     return True
+                elif key == Qt.Key.Key_Up or key == Qt.Key.Key_Down:
+                    # Leave Up/Down for the file list to scroll; do not consume globally.
+                    return False
                 elif key == Qt.Key.Key_Delete:
                     self.delete_selected()
                     return True
