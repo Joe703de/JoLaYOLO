@@ -99,8 +99,10 @@ python jolayolo.py -d ./my_dataset -c "egg,broken_egg,dirt"
 | Taste | Aktion |
 |-------|--------|
 | `1` – `9` | Klasse auswählen |
-| `Leertaste` / `→` | Nächstes Bild (automatisch speichern) |
-| `←` | Vorheriges Bild |
+| `Leertaste` / `→` | Nächstes Bild im aktuellen Filter (automatisch speichern) |
+| `←` | Vorheriges Bild im aktuellen Filter (automatisch speichern) |
+| `↑` / `↓` | Dateiliste scrollen (ohne Bildwechsel) |
+| `Return` | In der Dateiliste markiertes Bild laden |
 | `Entf` | Ausgewählte Box löschen |
 | `Tab` | Nächste Box des aktuellen Bildes auswählen |
 | `Shift` + `Tab` | Vorherige Box des aktuellen Bildes auswählen |
