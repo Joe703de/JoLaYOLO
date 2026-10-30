@@ -842,7 +842,8 @@ class MainWindow(QtWidgets.QMainWindow):
         img_h = self.pixmap.height()
         lines = []
         for rect in self.rect_items:
-            r = rect.rect()
+            # Items can be moved by dragging, so use the scene-relative rectangle
+            r = rect.mapRectToScene(rect.rect())
             cx = (r.x() + r.width() / 2) / img_w
             cy = (r.y() + r.height() / 2) / img_h
             w = abs(r.width()) / img_w
