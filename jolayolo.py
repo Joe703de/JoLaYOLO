@@ -369,10 +369,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.class_colors = self.generate_colors(len(self.config["classes"]))
         self.current_class_index = 0
 
-        self.image_files = sorted([
-            p for p in self.images_dir.iterdir()
-            if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS
-        ]) if self.images_dir.exists() else []
+        self.reload_images(silent=True)
 
         if not self.image_files:
             QtWidgets.QMessageBox.warning(self, "Hinweis",
@@ -418,6 +415,31 @@ class MainWindow(QtWidgets.QMainWindow):
             STATUS_PSEUDO: self.labels_dir / "pseudo",
             STATUS_VERIFIED: self.labels_dir / "verified",
         }
+
+    def reload_images(self, silent=False):
+        """Rescan images/all and restore the previous selection if still present."""
+        old_path = self.image_files[self.index] if self.image_files else None
+        self.image_files = sorted([
+            p for p in self.images_dir.iterdir()
+            if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS
+        ]) if self.images_dir.exists() else []
+
+        if not self.image_files:
+            self.index = 0
+            self.file_list.clear()
+            self.update_stats()
+            self.info_label.setText("Keine Bilder geladen.")
+            self.setWindowTitle("JoLaYOLO")
+            if not silent:
+                QtWidgets.QMessageBox.information(self, "Aktualisiert",
+                    f"Keine Bilder in {self.images_dir} gefunden.")
+            return
+
+        if old_path and old_path in self.image_files:
+            self.index = self.image_files.index(old_path)
+        else:
+            self.index = max(0, min(self.config.get("last_index", 0), len(self.image_files) - 1))
+        self.refresh_file_list()
 
     def label_path_for_status(self, image_path, status):
         if status == STATUS_UNLABELED:
@@ -987,6 +1009,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         elif key == Qt.Key.Key_V:
             self.verify_current_image()
+
+        elif key == Qt.Key.Key_U:
+            self.reload_images()
 
         elif Qt.Key.Key_1 <= key <= Qt.Key.Key_9:
             class_index = key - Qt.Key.Key_1
