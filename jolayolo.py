@@ -441,6 +441,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def reload_images(self, silent=False):
         """Rescan images/all and restore the previous selection if still present."""
+        if not hasattr(self, "image_files"):
+            self.image_files = []
         old_path = self.image_files[self.index] if self.image_files else None
         self.image_files = sorted([
             p for p in self.images_dir.iterdir()
