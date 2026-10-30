@@ -548,6 +548,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.file_list.setItemDelegate(CompactFileDelegate(self.file_list))
         self.file_list.setUniformItemSizes(True)
         self.file_list.setIconSize(QtCore.QSize(10, 10))
+        self.file_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.file_list.itemClicked.connect(self.on_file_clicked)
         self.file_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.file_list.customContextMenuRequested.connect(self.show_file_list_context_menu)
