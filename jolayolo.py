@@ -553,9 +553,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Status-Legende
         legend = QtWidgets.QLabel(
-            "<span style='color:#808080'>&#9679;</span> Ungelabelt  "
+            "<span style='color:#808080'>&#9679;</span> Unlabeled  "
             "<span style='color:#FFA500'>&#9679;</span> Pseudo  "
-            "<span style='color:#87CEEB'>&#9679;</span> Manuell  "
+            "<span style='color:#87CEEB'>&#9679;</span> Manual  "
             "<span style='color:#90EE90'>&#9679;</span> Verified"
         )
         legend.setStyleSheet("color: #aaa; font-size: 11px;")
