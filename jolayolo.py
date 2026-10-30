@@ -959,17 +959,34 @@ class MainWindow(QtWidgets.QMainWindow):
         self.save_labels()
         model = YOLO(model_path)
 
-        progress = QtWidgets.QProgressDialog("Erzeuge Pseudo-Labels...", "Abbrechen", 0, len(self.image_files), self)
+        target_images = [p for p in self.image_files if self.image_status(p) in (STATUS_UNLABELED, STATUS_PSEUDO)]
+        if not target_images:
+            QtWidgets.QMessageBox.information(self, "Fertig",
+                "Keine ungelabelten oder Pseudo-Bilder vorhanden.\n"
+                "Nur manuelle oder verifizierte Labels bleiben erhalten.")
+            return
+
+        reply = QtWidgets.QMessageBox.question(
+            self, "Pseudo-Labels erneuern",
+            f"{len(target_images)} Bilder mit Status 'unlabeled' oder 'pseudo' werden neu gelabelt.\n"
+            "Bestehende Pseudo-Labels werden dabei überschrieben.\n"
+            "Manuelle und verifizierte Labels bleiben erhalten.\n\n"
+            "Fortfahren?",
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No
+        )
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+
+        progress = QtWidgets.QProgressDialog("Erzeuge Pseudo-Labels...", "Abbrechen", 0, len(target_images), self)
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setMinimumDuration(0)
-
-        unlabeled_images = [p for p in self.image_files if self.image_status(p) == STATUS_UNLABELED]
-        progress.setMaximum(len(unlabeled_images))
 
         pseudo_dir = self.labels_dir / "pseudo"
         pseudo_dir.mkdir(parents=True, exist_ok=True)
 
-        for i, path in enumerate(unlabeled_images):
+        processed = 0
+        for i, path in enumerate(target_images):
             progress.setValue(i)
             if progress.wasCanceled():
                 break
@@ -990,11 +1007,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
             label_file = pseudo_dir / f"{path.stem}.txt"
             label_file.write_text("\n".join(lines) + "\n" if lines else "", encoding="utf-8")
+            processed += 1
 
-        progress.setValue(len(unlabeled_images))
+        progress.setValue(len(target_images))
         self.refresh_file_list()
         QtWidgets.QMessageBox.information(self, "Fertig",
-            f"Pseudo-Labels für {len(unlabeled_images)} Bilder erzeugt.")
+            f"Pseudo-Labels für {processed} von {len(target_images)} Bildern erzeugt.")
 
     def _prepare_train_val(self, val_ratio=0.2, seed=None):
         def label_for_image(path):
